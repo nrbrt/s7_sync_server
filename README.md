@@ -8,4 +8,4 @@ I provide a server heartbeat, so the PLC's know the data a fresh and I have my P
 
 At the moment it is a node.js application, but I am working on a Rust version as well.
 
-ATTENTION: no security measures are implemented. The datablocks need to have optimized block access disabled and the PLCs need to allow PUT/GET!
+ATTENTION: no security measures are implemented and that is something to take into account. The datablocks need to have optimized block access disabled and the PLCs need to allow PUT/GET!
