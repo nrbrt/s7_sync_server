@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PLC Synchronization Application Manual</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
+        h1, h2, h3 { color: blue; }
+        code { background-color: #f4f4f4; padding: 2px 5px; border-radius: 3px; }
+        pre { background-color: #f4f4f4; padding: 10px; border-radius: 5px; overflow: auto; }
+    </style>
+</head>
+<body>
+    <h1>PLC Synchronization Application Manual</h1>
+    <p>This manual provides instructions on how to use the PLC Synchronization Application, which facilitates communication between multiple PLCs by reading and writing data blocks, handling synchronization, and managing heartbeats.</p>
+
+    <h2>Purpose of the Application</h2>
+    <p>The PLC Synchronization Application is designed to facilitate communication between multiple Programmable Logic Controllers (PLCs) in an industrial environment. The application reads data from PLCs, synchronizes it across other PLCs, and ensures consistent state management by using heartbeat signals to verify the status of each PLC. This ensures that a controlling PLC can verify that a command has been executed correctly by the receiving PLC, and vice versa.</p>
+
+    <h2>Installation</h2>
+    <p>To install and run the PLC Synchronization Application, follow these steps:</p>
+
+    <h3>1. Prerequisites</h3>
+    <p>Ensure that you have Node.js and npm installed on your system. You can download and install them from <a href="https://nodejs.org/" target="_blank">nodejs.org</a>.</p>
+
+    <h3>2. Install Dependencies</h3>
+    <p>Navigate to the directory where your application files are located and run the following command to install the required modules:</p>
+    <pre><code>npm install</code></pre>
+    <p>The application requires the following Node.js modules:</p>
+    <ul>
+        <li><code>fs</code>: File system operations.</li>
+        <li><code>nodes7</code>: Communication with Siemens PLCs.</li>
+        <li><code>express</code>: Web framework for serving the HTTP interface.</li>
+        <li><code>jsonc-parser</code>: Parsing JSON with comments.</li>
+        <li><code>winston</code>: Logging library for detailed logs.</li>
+        <li><code>winston-daily-rotate-file</code>: Log rotation for maintaining daily log files.</li>
+    </ul>
+
+    <h3>3. Running the Application</h3>
+    <p>To start the application, use the following command:</p>
+    <pre><code>node app.js</code></pre>
+
+    <h2>Configuration File (config.json)</h2>
+    <p>The <code>config.json</code> file is used to configure the application settings and define the PLCs involved in the synchronization process. Below is an example of the configuration file and an explanation of its fields.</p>
+
+    <pre><code>{
+  "operationInterval": 2000,
+  "maxReconnectAttempts": 10,
+  "reconnectInterval": 5000,
+  "heartbeatOffset": 8,
+  "httpPort": 3010,
+  "syncDbNumber": 200,        
+  "plcs": [
+    {
+      "name": "PLC_SERVER",
+      "ip": "192.168.178.190",
+      "rack": 0,
+      "slot": 1,
+      "offset": 0,
+      "dbNumber": 17,          
+      "variables": {
+        "cip_pump_speed_control": { "type": "INT", "offset": 0 },
+        "heartbeat": { "type": "INT", "offset": 2 }
+      }
+    },
+    {
+      "name": "PLC_H150",
+      "ip": "192.168.178.184",
+      "rack": 0,
+      "slot": 1,
+      "offset": 4,
+      "dbNumber": 17,          
+      "variables": {
+        "cip_pump_speed_state": { "type": "INT", "offset": 0 },
+        "heartbeat": { "type": "INT", "offset": 2 }
+      }
+    }
+  ]
+}</code></pre>
+
+    <h3>Explanation of Configuration Fields</h3>
+    <ul>
+        <li><strong>operationInterval</strong>: Interval (in milliseconds) at which the program performs read and write operations for all PLCs.</li>
+        <li><strong>maxReconnectAttempts</strong>: The maximum number of reconnection attempts for each PLC before giving up.</li>
+        <li><strong>reconnectInterval</strong>: Interval (in milliseconds) between reconnection attempts.</li>
+        <li><strong>heartbeatOffset</strong>: The offset used for the server heartbeat variable in the synchronization data block.</li>
+        <li><strong>httpPort</strong>: Port number on which the Express server will run to serve the HTTP interface.</li>
+        <li><strong>syncDbNumber</strong>: Data block number used for synchronizing data across PLCs.</li>
+        <li><strong>plcs</strong>: Array of PLC configurations:</li>
+        <ul>
+            <li><strong>name</strong>: Unique name of the PLC.</li>
+            <li><strong>ip</strong>: IP address of the PLC.</li>
+            <li><strong>rack</strong>: Rack number of the PLC.</li>
+            <li><strong>slot</strong>: Slot number of the PLC.</li>
+            <li><strong>offset</strong>: Offset for the data in the synchronization block for each PLC.</li>
+            <li><strong>dbNumber</strong>: Data block number used for reading from each specific PLC.</li>
+            <li><strong>variables</strong>: List of variables for each PLC:</li>
+            <ul>
+                <li><strong>type</strong>: Data type of the variable (e.g., <code>INT</code>, <code>BOOL</code>, <code>REAL</code>).</li>
+                <li><strong>offset</strong>: Offset of the variable within the data block.</li>
+            </ul>
+        </ul>
+    </ul>
+
+    <h3>Examples of Variable Definitions</h3>
+    <p>Below are examples of how to define different types of variables:</p>
+    <ul>
+        <li><strong>Integer (INT)</strong>: <code>"cip_pump_speed_control": { "type": "INT", "offset": 0 }</code></li>
+        <li><strong>Boolean (BOOL)</strong>: <code>"pump_active": { "type": "BOOL", "byte": 3, "bit": 0 }</code></li>
+        <li><strong>Real (REAL)</strong>: <code>"temperature": { "type": "REAL", "offset": 4 }</code></li>
+        <li><strong>Array of Integers</strong>: <code>"pressure_values": [ { "type": "INT", "offset": 6 }, { "type": "INT", "offset": 8 } ]</code></li>
+    </ul>
+
+    <h2>Running the Application with PM2</h2>
+    <p>PM2 is a process manager for Node.js applications that allows you to keep your application running, restart it on failure, and ensure it starts on boot. Below are instructions on how to set up PM2 to run the PLC Synchronization Application:</p>
+
+    <h3>Install PM2</h3>
+    <p>First, install PM2 globally using npm:</p>
+    <pre><code>npm install -g pm2</code></pre>
+
+    <h3>Start the Application with PM2</h3>
+    <p>Navigate to the directory where your application is located and start it with PM2:</p>
+    <pre><code>pm2 start app.js --name "plc-sync-app"</code></pre>
+    <p>The <code>--name</code> flag assigns a custom name to your process, making it easier to manage.</p>
+
+    <h3>Save the PM2 Process List</h3>
+    <p>To ensure that your application restarts on system reboot, save the PM2 process list:</p>
+    <pre><code>pm2 save</code></pre>
+
+    <h3>Set Up PM2 to Start on Boot</h3>
+    <p>To configure PM2 to start on system boot, use the following command:</p>
+    <pre><code>pm2 startup</code></pre>
+    <p>Follow the instructions provided by the command to complete the setup.</p>
+
+    <h2>HTTP Interface</h2>
+    <p>The application provides an HTTP interface that allows you to access the combined data and various counters. By default, it runs on port 3010 (or the port specified in the configuration file).</p>
+    <h3>Endpoints</h3>
+    <ul>
+      <li><strong>GET /data</strong>: Provides a JSON object with the latest server heartbeat, combined data from all PLCs, and the read/write counters.</li>
+      <li><strong>GET /manual</strong>: Displays this manual as an HTML page for easy reference.</li>
+  </ul>
+
+  <h3>Example Usage of HTTP Interface</h3>
+  <p>You can access the data through a web browser or a tool like <a href="https://www.postman.com/" target="_blank">Postman</a>. Here are some example URLs:</p>
+  <ul>
+      <li><code>http://localhost:3010/data</code> - Returns the current data being processed by the application in JSON format.</li>
+      <li><code>http://localhost:3010/manual</code> - Opens this manual to understand how to use the application.</li>
+  </ul>
+
+  <h2>Monitoring Logs</h2>
+  <p>The application uses the <code>winston</code> library for logging. Logs are stored in files that rotate daily, making it easy to track the application's activity over time. The following log files are created:</p>
+  <ul>
+      <li><strong>plc-app-%DATE%.log</strong>: Contains general application information, warnings, and errors.</li>
+      <li><strong>plc-errors-%DATE%.log</strong>: Stores only error-level messages for easier troubleshooting.</li>
+  </ul>
+
+  <h3>Checking Logs with PM2</h3>
+  <p>If you are using PM2 to manage your application, you can also check logs using the following command:</p>
+  <pre><code>pm2 logs plc-sync-app</code></pre>
+
+  <h2>Troubleshooting</h2>
+  <h3>Common Issues</h3>
+  <ul>
+      <li><strong>Connection Issues</strong>: If the application cannot connect to a PLC, ensure the IP address, rack, and slot settings are correct in the configuration file. The application will attempt reconnection up to the configured number of times (<code>maxReconnectAttempts</code>).</li>
+      <li><strong>No Data Available to Sync</strong>: This warning indicates that no data was read from the PLC. Verify the PLC configuration and the physical connection.</li>
+  </ul>
+
+  <h3>Heartbeat Mechanism</h3>
+  <p>The application uses a heartbeat mechanism to ensure that all PLCs are active and communicating properly. The <code>serverHeartbeat</code> value is incremented regularly and synchronized across all PLCs. If a PLC stops updating its heartbeat, this indicates a communication problem that requires investigation.</p>
+
+  <h3>Manual Sync Operation</h3>
+  <p>If necessary, you can manually trigger the synchronization operation by calling the endpoint <code>/data</code> to verify current values and ensure that data is properly flowing between the PLCs.</p>
+
+  <h2>Contact and Support</h2>
+  <p>If you encounter any issues not covered in this manual or require further assistance, please contact your system administrator or the developer responsible for maintaining this application.</p>
+</body>
+</html>

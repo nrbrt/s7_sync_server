@@ -1,0 +1,44 @@
+{
+  "operationInterval": 2000,
+  "maxReconnectAttempts": 10,
+  "reconnectInterval": 5000,
+  "heartbeatOffset": 46,
+  "httpPort": 3010,
+  "syncDbNumber": 200,        
+  "plcs": [
+    {
+      "name": "PLC_SERVER",
+      "ip": "192.168.178.190",
+      "rack": 0,
+      "slot": 1,
+      "offset": 0,
+      "dbNumber": 17,          
+      "variables": {
+        "cip_pump_speed_control": { "type": "INT", "offset": 0 },
+        "heartbeat": { "type": "INT", "offset": 2 },
+        "buffer1_top_temperature": {"type": "REAL", "offset": 4},
+        "buffer1_bottom_temperature": {"type": "REAL", "offset": 8},
+        "buffer2_top_temperature": {"type": "REAL", "offset": 12},
+        "buffer2_bottom_temperature": {"type": "REAL", "offset": 16},
+        "buffer3_top_temperature": {"type": "REAL", "offset": 20},
+        "buffer3_bottom_temperature": {"type": "REAL", "offset": 24},
+        "buffer1_volume": {"type": "REAL", "offset": 28},
+        "buffer2_volume": {"type": "REAL", "offset": 32},
+        "buffer3_volume": {"type": "REAL", "offset": 36},
+        "buffers_ready_to_fill": {"type": "BOOL", "byte": 40, "bit": 0}
+      }
+    },
+    {
+      "name": "PLC_H150",
+      "ip": "192.168.178.184",
+      "rack": 0,
+      "slot": 1,
+      "offset": 42,
+      "dbNumber": 17,          
+      "variables": {
+        "cip_pump_speed_state": { "type": "INT", "offset": 0 },
+        "heartbeat": { "type": "INT", "offset": 2 }
+      }
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "name": "s7-sync-server",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@st-one-io/nodes7": "^1.1.0",
+    "express": "^4.21.1",
+    "jsonc-parser": "^3.3.1",
+    "nodes7": "^0.3.18",
+    "ping": "^0.4.4",
+    "winston": "^3.15.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  }
+}
