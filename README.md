@@ -4,7 +4,7 @@ It is easy to add and remove PLCs and shared data using the config file.
 
 It will recover from PLCs rebooting and network errors. The data that is shared by each plc is combined and that combined data is distributed to all PLCs.
 
-I provide a server heartbeat, so the PLC's know the data a fresh and I have my PLCs produce a heartbeat as well that is in their shared data. That way the PLCs can check if the other PLC is alive. I use a request-feedback model. So PLC A request a pump to be on and shares that request. PLC B reads that request and shares the current state of the pump. PLC A can see that the request was executed in the synced data from PLC B.
+I provide a server heartbeat, so the PLC's know the data a fresh and I have my PLCs produce a heartbeat as well that is in their shared data. That way the PLCs can check if the other PLC is alive. I use a request-feedback model. So PLC A request a pump to be on and shares that request. PLC B reads that request, excutes it and shares the resulting state of the pump. PLC A can see that the request was executed in the synced data from PLC B.
 
 At the moment it is a node.js application, but I am working on a Rust version as well.
 
