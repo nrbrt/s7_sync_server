@@ -1,2 +1,3 @@
 This program is to make it easier sharing data between S7 1200 PLC's. That is what I use it for anyway. The way Siemens does the sharing of data between PLCs is not flexible enough for me. Your milage may vary. The S7 1200 series has a limitation of connection count as well. I use an extra VM that runs this program 24/7. I control things using a request-feedback model. The program provides data retrieval, data synchronisation, a http json interface for troubleshooting and an online manual.
 It will recover from PLCs rebooting and network errors. The data that is shared by each plc is combined and that combined data is distributed to all PLCs.
+At the moment it is a node.js application, but I am working on a Rust version as well.
