@@ -17,7 +17,7 @@ The utility is designed to run continuously on a dedicated virtual machine (VM),
 ### Request-Feedback Control Explained
 The program uses a **request-feedback** model to manage control across PLCs. Here is an example:
 - **PLC A** requests a pump to be turned on, sharing the request and setting its acknowledgment (ack) flag to `false`.
-- **PLC B** reads the request, sees the ack is `false`, executes the command, and shares the resulting state of the pump.
+- **PLC B** reads the request, sees the ack is `false`, executes the command(switches the pump on), and shares the resulting state of the pump.
 - **PLC A** verifies that its request has been executed based on PLC B's shared state and then sets its ack to `true`.
 
 This approach allows multiple PLCs to interact with shared devices, like pumps, without blocking each other—unless desired, in which case you can adjust the logic accordingly.
