@@ -2,7 +2,7 @@
 
 This program facilitates data sharing between Siemens S7-1200 PLCs. Siemens' built-in methods for PLC-to-PLC communication weren't flexible enough for my needs, so I developed this utility to overcome those limitations, particularly given the connection count constraints of the S7-1200 series. Your mileage may vary, but it has proven highly effective for my use cases.
 
-The utility is designed to run continuously on a dedicated virtual machine (VM) or server and uses a **request-feedback model** to allow easy and flexible control over shared resources.
+The utility is designed to run continuously on a dedicated virtual machine (VM), Raspberry Pi or server and uses a **request-feedback model** to allow easy and flexible control over shared resources.
 
 ### Key Features
 
