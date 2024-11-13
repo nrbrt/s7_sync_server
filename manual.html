@@ -50,25 +50,18 @@
   "reconnectInterval": 5000,
   "heartbeatOffset": 8,
   "httpPort": 3010,
-  "syncDbNumber": 200,        
-  "apiConfig": {
-    "baseUrl": "http://192.168.178.73",  
-    "dataEndpoint": "/data",             
-    "manualEndpoint": "/manual"          
-  },
   "plcs": [
     {
       "name": "PLC_SERVER",
       "ip": "192.168.178.190",
       "rack": 0,
       "slot": 1,
-      "offset": 0,
-      "dbNumber": 17,          
+      "syncDbOffset": 0,
+      "syncDbNumber": 200,
+      "dbNumber": 17,
       "variables": {
         "cip_pump_speed_control": { "type": "INT", "offset": 0 },
-        "heartbeat": { "type": "INT", "offset": 2 },
-        "buffer1_top_temperature": {"type": "REAL", "offset": 4},
-        "buffer1_bottom_temperature": {"type": "REAL", "offset": 8}
+        "heartbeat": { "type": "INT", "offset": 2 }
       }
     },
     {
@@ -76,8 +69,9 @@
       "ip": "192.168.178.184",
       "rack": 0,
       "slot": 1,
-      "offset": 42,
-      "dbNumber": 17,          
+      "syncDbOffset": 4,
+      "syncDbNumber": 200,
+      "dbNumber": 17,
       "variables": {
         "cip_pump_speed_state": { "type": "INT", "offset": 0 },
         "heartbeat": { "type": "INT", "offset": 2 }
@@ -93,20 +87,14 @@
         <li><strong>reconnectInterval</strong>: Interval (in milliseconds) between reconnection attempts.</li>
         <li><strong>heartbeatOffset</strong>: The offset used for the server heartbeat variable in the synchronization data block.</li>
         <li><strong>httpPort</strong>: Port number on which the Express server will run to serve the HTTP interface.</li>
-        <li><strong>syncDbNumber</strong>: Data block number used for synchronizing data across PLCs.</li>
-        <li><strong>apiConfig</strong>: Configuration for the HTTP API:</li>
-        <ul>
-            <li><strong>baseUrl</strong>: The base IP address of the server (without the port).</li>
-            <li><strong>dataEndpoint</strong>: The endpoint for accessing combined data in JSON format.</li>
-            <li><strong>manualEndpoint</strong>: The endpoint for accessing the manual.</li>
-        </ul>
         <li><strong>plcs</strong>: Array of PLC configurations:</li>
         <ul>
             <li><strong>name</strong>: Unique name of the PLC.</li>
             <li><strong>ip</strong>: IP address of the PLC.</li>
             <li><strong>rack</strong>: Rack number of the PLC.</li>
             <li><strong>slot</strong>: Slot number of the PLC.</li>
-            <li><strong>offset</strong>: Offset for the data in the synchronization block for each PLC.</li>
+            <li><strong>syncDbOffset</strong>: Offset for the data in the synchronization block for each PLC.</li>
+            <li><strong>syncDbNumber</strong>: Data block number used for synchronizing data for each specific PLC.</li>
             <li><strong>dbNumber</strong>: Data block number used for reading from each specific PLC.</li>
             <li><strong>variables</strong>: List of variables for each PLC:</li>
             <ul>
@@ -147,11 +135,11 @@
     <p>Follow the instructions provided by the command to complete the setup.</p>
 
     <h2>HTTP Interface</h2>
-    <p>The application provides an HTTP interface that allows you to access the combined data and various counters. By default, it runs on port 3010 (or the port specified in the configuration file).</p>
+    <p>The application provides an HTTP interface that allows you to access the combined data and various counters. By default, it runs on the port specified in the configuration file.</p>
     <h3>Endpoints</h3>
     <ul>
-        <li><strong>Data Endpoint</strong>: Access combined data and counters in JSON format by navigating to <code>http://[baseUrl]:[httpPort][dataEndpoint]</code>. For example: <code>http://192.168.178.73:3010/data</code></li>
-        <li><strong>Manual Endpoint</strong>: Access the application manual by navigating to <code>http://[baseUrl]:[httpPort][manualEndpoint]</code>. For example: <code>http://192.168.178.73:3010/manual</code></li>
+        <li><strong>/data</strong>: Provides the current synchronized data along with the server heartbeat, read counters, write counters, and a link to the manual.</li>
+        <li><strong>/manual</strong>: Provides access to the online manual for the application.</li>
     </ul>
 
 </body>

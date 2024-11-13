@@ -88,28 +88,28 @@ for (const targetPlc of config.plcs) {
   }
 
   // Write Variables for All PLCs (including server heartbeat)
-  for (const sourcePlc of config.plcs) {
-    const sourceOffset = sourcePlc.offset;
+for (const sourcePlc of config.plcs) {
+  const sourceOffset = sourcePlc.syncDbOffset;
 
-    for (const [key, descriptor] of Object.entries(sourcePlc.variables)) {
-      if (Array.isArray(descriptor)) {
-        descriptor.forEach((desc, index) => {
-          const varName = `${sourcePlc.name}__write__${key}_${index}`;
-          plcVars[targetPlc.name][varName] = `DB${config.syncDbNumber},${desc.type}${desc.offset + sourceOffset}`;
-        });
-      } else if (descriptor.type === "BOOL") {
-        const varName = `${sourcePlc.name}__write__${key}`;
-        plcVars[targetPlc.name][varName] = `DB${config.syncDbNumber},X${descriptor.byte + sourceOffset}.${descriptor.bit}`;
-      } else {
-        const varName = `${sourcePlc.name}__write__${key}`;
-        plcVars[targetPlc.name][varName] = `DB${config.syncDbNumber},${descriptor.type}${descriptor.offset + sourceOffset}`;
-      }
+  for (const [key, descriptor] of Object.entries(sourcePlc.variables)) {
+    if (Array.isArray(descriptor)) {
+      descriptor.forEach((desc, index) => {
+        const varName = `${sourcePlc.name}__write__${key}_${index}`;
+        plcVars[targetPlc.name][varName] = `DB${targetPlc.syncDbNumber},${desc.type}${desc.offset + sourceOffset}`;
+      });
+    } else if (descriptor.type === "BOOL") {
+      const varName = `${sourcePlc.name}__write__${key}`;
+      plcVars[targetPlc.name][varName] = `DB${targetPlc.syncDbNumber},X${descriptor.byte + sourceOffset}.${descriptor.bit}`;
+    } else {
+      const varName = `${sourcePlc.name}__write__${key}`;
+      plcVars[targetPlc.name][varName] = `DB${targetPlc.syncDbNumber},${descriptor.type}${descriptor.offset + sourceOffset}`;
     }
   }
+}
 
-  // Server Heartbeat Variable
-  const heartbeatVarName = `${targetPlc.name}__write__server_heartbeat`;
-  plcVars[targetPlc.name][heartbeatVarName] = `DB${config.syncDbNumber},INT${config.heartbeatOffset || 0}`;
+// Server Heartbeat Variable
+const heartbeatVarName = `${targetPlc.name}__write__server_heartbeat`;
+plcVars[targetPlc.name][heartbeatVarName] = `DB${targetPlc.syncDbNumber},INT${config.heartbeatOffset || 0}`;
 }
 
 // Debug: Log all variable mappings
