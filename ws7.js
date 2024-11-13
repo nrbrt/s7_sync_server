@@ -39,6 +39,10 @@ const logger = winston.createLogger({
   ]
 });
 
+// Extract API configuration from config file
+const { baseUrl, dataEndpoint, manualEndpoint } = config.apiConfig;
+const fullBaseUrl = `${baseUrl}:${config.httpPort}`;
+
 // Global variables and configuration
 let combinedData = {};
 let serverHeartbeat = 0;
@@ -301,24 +305,24 @@ async function updateAllPLCs() {
     .catch(err => logger.error("Initialization failed:", err));
   
   // Serve combined data via HTTP
-  app.get('/data', (req, res) => {
-    res.json({
-      serverHeartbeat,
-      combinedData,
-      counters, // Include the read and write counters in the response
-      manualURL: 'http://192.168.178.73:3010/manual' // this is meant as a hint to the user that they can access the manual
-    });
+app.get(dataEndpoint, (req, res) => {
+  res.json({
+    serverHeartbeat,
+    combinedData,
+    counters,
+    manualURL: `${fullBaseUrl}${manualEndpoint}` // Construct the full URL using baseUrl and manualEndpoint
   });
-  
-  // Serve the manual via HTTP
-  app.get('/manual', (req, res) => {
-    res.sendFile(__dirname + '/manual.html'); // Assuming manual.html is available in the same directory
-  });
-  
-  // Start the HTTP server
-  app.listen(config.httpPort || 3010, () => {
-    logger.info(`Server running on http://localhost:${config.httpPort || 3010}`);
-  });
+});
+
+// Serve the manual via HTTP
+app.get(manualEndpoint, (req, res) => {
+  res.sendFile(__dirname + '/manual.html');
+});
+
+// Start the HTTP server
+app.listen(config.httpPort, () => {
+  logger.info(`Server running on ${fullBaseUrl}`);
+});
   
   // Graceful Shutdown
   process.on('SIGINT', () => {

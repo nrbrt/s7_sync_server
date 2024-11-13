@@ -1,10 +1,15 @@
 {
-  "operationInterval": 2000,
+  "operationInterval": 500,
   "maxReconnectAttempts": 10,
   "reconnectInterval": 5000,
-  "heartbeatOffset": 46,
+  "heartbeatOffset": 56,
   "httpPort": 3010,
-  "syncDbNumber": 200,        
+  "syncDbNumber": 200,
+  "apiConfig": {
+    "baseUrl": "http://192.168.178.73",  
+    "dataEndpoint": "/data",                  
+    "manualEndpoint": "/manual"
+  },        
   "plcs": [
     {
       "name": "PLC_SERVER",
@@ -14,18 +19,19 @@
       "offset": 0,
       "dbNumber": 17,          
       "variables": {
-        "cip_pump_speed_control": { "type": "INT", "offset": 0 },
-        "heartbeat": { "type": "INT", "offset": 2 },
-        "buffer1_top_temperature": {"type": "REAL", "offset": 4},
-        "buffer1_bottom_temperature": {"type": "REAL", "offset": 8},
-        "buffer2_top_temperature": {"type": "REAL", "offset": 12},
-        "buffer2_bottom_temperature": {"type": "REAL", "offset": 16},
-        "buffer3_top_temperature": {"type": "REAL", "offset": 20},
-        "buffer3_bottom_temperature": {"type": "REAL", "offset": 24},
-        "buffer1_volume": {"type": "REAL", "offset": 28},
-        "buffer2_volume": {"type": "REAL", "offset": 32},
-        "buffer3_volume": {"type": "REAL", "offset": 36},
-        "buffers_ready_to_fill": {"type": "BOOL", "byte": 40, "bit": 0}
+        "cip_pump_enable_state": { "type": "BOOL", "byte": 0, "bit": 0 },
+        "cip_pump_speed_control": { "type": "INT", "offset": 2 },
+        "heartbeat": { "type": "INT", "offset": 4 },
+        "buffer1_top_temperature": {"type": "REAL", "offset": 6},
+        "buffer1_bottom_temperature": {"type": "REAL", "offset": 10},
+        "buffer2_top_temperature": {"type": "REAL", "offset": 14},
+        "buffer2_bottom_temperature": {"type": "REAL", "offset": 18},
+        "buffer3_top_temperature": {"type": "REAL", "offset": 22},
+        "buffer3_bottom_temperature": {"type": "REAL", "offset": 26},
+        "buffer1_volume": {"type": "REAL", "offset": 30},
+        "buffer2_volume": {"type": "REAL", "offset": 34},
+        "buffer3_volume": {"type": "REAL", "offset": 38},
+        "buffers_ready_to_fill": {"type": "BOOL", "byte": 42, "bit": 0}
       }
     },
     {
@@ -33,11 +39,26 @@
       "ip": "192.168.178.184",
       "rack": 0,
       "slot": 1,
-      "offset": 42,
+      "offset": 44,
       "dbNumber": 17,          
       "variables": {
         "cip_pump_speed_state": { "type": "INT", "offset": 0 },
         "heartbeat": { "type": "INT", "offset": 2 }
+      }
+    },
+    {
+      "name": "PLC_STORAGE",
+      "ip": "192.168.178.186",
+      "rack": 0,
+      "slot": 1,
+      "offset": 48,
+      "dbNumber": 11,          
+      "variables": {
+        "cip_pump_request": { "type": "BOOL", "byte": 0, "bit": 0 },
+        "cip_pump_ack": { "type": "BOOL", "byte": 0, "bit": 1 },
+        "cip_pump_speed_request": { "type": "INT", "offset": 2 },
+        "cip_pump_speed_ack": { "type": "BOOL", "byte": 4, "bit": 0 },
+        "heartbeat": { "type": "INT", "offset": 6 }
       }
     }
   ]

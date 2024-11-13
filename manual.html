@@ -51,6 +51,11 @@
   "heartbeatOffset": 8,
   "httpPort": 3010,
   "syncDbNumber": 200,        
+  "apiConfig": {
+    "baseUrl": "http://192.168.178.73",  
+    "dataEndpoint": "/data",             
+    "manualEndpoint": "/manual"          
+  },
   "plcs": [
     {
       "name": "PLC_SERVER",
@@ -61,7 +66,9 @@
       "dbNumber": 17,          
       "variables": {
         "cip_pump_speed_control": { "type": "INT", "offset": 0 },
-        "heartbeat": { "type": "INT", "offset": 2 }
+        "heartbeat": { "type": "INT", "offset": 2 },
+        "buffer1_top_temperature": {"type": "REAL", "offset": 4},
+        "buffer1_bottom_temperature": {"type": "REAL", "offset": 8}
       }
     },
     {
@@ -69,7 +76,7 @@
       "ip": "192.168.178.184",
       "rack": 0,
       "slot": 1,
-      "offset": 4,
+      "offset": 42,
       "dbNumber": 17,          
       "variables": {
         "cip_pump_speed_state": { "type": "INT", "offset": 0 },
@@ -87,6 +94,12 @@
         <li><strong>heartbeatOffset</strong>: The offset used for the server heartbeat variable in the synchronization data block.</li>
         <li><strong>httpPort</strong>: Port number on which the Express server will run to serve the HTTP interface.</li>
         <li><strong>syncDbNumber</strong>: Data block number used for synchronizing data across PLCs.</li>
+        <li><strong>apiConfig</strong>: Configuration for the HTTP API:</li>
+        <ul>
+            <li><strong>baseUrl</strong>: The base IP address of the server (without the port).</li>
+            <li><strong>dataEndpoint</strong>: The endpoint for accessing combined data in JSON format.</li>
+            <li><strong>manualEndpoint</strong>: The endpoint for accessing the manual.</li>
+        </ul>
         <li><strong>plcs</strong>: Array of PLC configurations:</li>
         <ul>
             <li><strong>name</strong>: Unique name of the PLC.</li>
@@ -137,42 +150,10 @@
     <p>The application provides an HTTP interface that allows you to access the combined data and various counters. By default, it runs on port 3010 (or the port specified in the configuration file).</p>
     <h3>Endpoints</h3>
     <ul>
-      <li><strong>GET /data</strong>: Provides a JSON object with the latest server heartbeat, combined data from all PLCs, and the read/write counters.</li>
-      <li><strong>GET /manual</strong>: Displays this manual as an HTML page for easy reference.</li>
-  </ul>
+        <li><strong>Data Endpoint</strong>: Access combined data and counters in JSON format by navigating to <code>http://[baseUrl]:[httpPort][dataEndpoint]</code>. For example: <code>http://192.168.178.73:3010/data</code></li>
+        <li><strong>Manual Endpoint</strong>: Access the application manual by navigating to <code>http://[baseUrl]:[httpPort][manualEndpoint]</code>. For example: <code>http://192.168.178.73:3010/manual</code></li>
+    </ul>
 
-  <h3>Example Usage of HTTP Interface</h3>
-  <p>You can access the data through a web browser or a tool like <a href="https://www.postman.com/" target="_blank">Postman</a>. Here are some example URLs:</p>
-  <ul>
-      <li><code>http://localhost:3010/data</code> - Returns the current data being processed by the application in JSON format.</li>
-      <li><code>http://localhost:3010/manual</code> - Opens this manual to understand how to use the application.</li>
-  </ul>
-
-  <h2>Monitoring Logs</h2>
-  <p>The application uses the <code>winston</code> library for logging. Logs are stored in files that rotate daily, making it easy to track the application's activity over time. The following log files are created:</p>
-  <ul>
-      <li><strong>plc-app-%DATE%.log</strong>: Contains general application information, warnings, and errors.</li>
-      <li><strong>plc-errors-%DATE%.log</strong>: Stores only error-level messages for easier troubleshooting.</li>
-  </ul>
-
-  <h3>Checking Logs with PM2</h3>
-  <p>If you are using PM2 to manage your application, you can also check logs using the following command:</p>
-  <pre><code>pm2 logs plc-sync-app</code></pre>
-
-  <h2>Troubleshooting</h2>
-  <h3>Common Issues</h3>
-  <ul>
-      <li><strong>Connection Issues</strong>: If the application cannot connect to a PLC, ensure the IP address, rack, and slot settings are correct in the configuration file. The application will attempt reconnection up to the configured number of times (<code>maxReconnectAttempts</code>).</li>
-      <li><strong>No Data Available to Sync</strong>: This warning indicates that no data was read from the PLC. Verify the PLC configuration and the physical connection.</li>
-  </ul>
-
-  <h3>Heartbeat Mechanism</h3>
-  <p>The application uses a heartbeat mechanism to ensure that all PLCs are active and communicating properly. The <code>serverHeartbeat</code> value is incremented regularly and synchronized across all PLCs. If a PLC stops updating its heartbeat, this indicates a communication problem that requires investigation.</p>
-
-  <h3>Manual Sync Operation</h3>
-  <p>If necessary, you can manually trigger the synchronization operation by calling the endpoint <code>/data</code> to verify current values and ensure that data is properly flowing between the PLCs.</p>
-
-  <h2>Contact and Support</h2>
-  <p>If you encounter any issues not covered in this manual or require further assistance, please contact your system administrator or the developer responsible for maintaining this application.</p>
 </body>
 </html>
+
