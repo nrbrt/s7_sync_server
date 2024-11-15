@@ -3,53 +3,92 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PLC Synchronization Application Manual</title>
+    <title>PLC Sync Server Manual</title>
     <style>
-        body { font-family: Arial, sans-serif; line-height: 1.6; margin: 20px; }
-        h1, h2, h3 { color: blue; }
-        code { background-color: #f4f4f4; padding: 2px 5px; border-radius: 3px; }
-        pre { background-color: #f4f4f4; padding: 10px; border-radius: 5px; overflow: auto; }
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            max-width: 800px;
+            margin: auto;
+            padding: 20px;
+        }
+        h1, h2, h3 {
+            color: blue;
+        }
+        code {
+            background-color: #f4f4f4;
+            padding: 2px 4px;
+            border-radius: 4px;
+        }
+        pre {
+            background-color: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
     </style>
 </head>
 <body>
-    <h1>PLC Synchronization Application Manual</h1>
-    <p>This manual provides instructions on how to use the PLC Synchronization Application, which facilitates communication between multiple PLCs by reading and writing data blocks, handling synchronization, and managing heartbeats.</p>
 
-    <h2>Purpose of the Application</h2>
-    <p>The PLC Synchronization Application is designed to facilitate communication between multiple Programmable Logic Controllers (PLCs) in an industrial environment. The application reads data from PLCs, synchronizes it across other PLCs, and ensures consistent state management by using heartbeat signals to verify the status of each PLC. This ensures that a controlling PLC can verify that a command has been executed correctly by the receiving PLC, and vice versa.</p>
+<h1>PLC Sync Server Manual</h1>
 
-    <h2>Installation</h2>
-    <p>To install and run the PLC Synchronization Application, follow these steps:</p>
+<h2>Introduction</h2>
+<p>This program is designed to facilitate data sharing between Siemens S7-1200 PLCs. The default Siemens method for sharing data between PLCs can be inflexible, especially when dealing with multiple PLCs. This solution offers a flexible approach, allowing multiple PLCs to share and synchronize data via an intermediary server. The server program is currently implemented in Node.js and can be run on a virtual machine or any compatible environment.</p>
 
-    <h3>1. Prerequisites</h3>
-    <p>Ensure that you have Node.js and npm installed on your system. You can download and install them from <a href="https://nodejs.org/" target="_blank">nodejs.org</a>.</p>
+<p>Key features include:</p>
+<ul>
+    <li>Data retrieval and synchronization between PLCs.</li>
+    <li>HTTP JSON interface for troubleshooting, providing read/write counters.</li>
+    <li>Configurable via a JSON configuration file.</li>
+    <li>Log files with rotation for monitoring events.</li>
+    <li>An online manual available through the web interface.</li>
+</ul>
 
-    <h3>2. Install Dependencies</h3>
-    <p>Navigate to the directory where your application files are located and run the following command to install the required modules:</p>
-    <pre><code>npm install</code></pre>
-    <p>The application requires the following Node.js modules:</p>
-    <ul>
-        <li><code>fs</code>: File system operations.</li>
-        <li><code>nodes7</code>: Communication with Siemens PLCs.</li>
-        <li><code>express</code>: Web framework for serving the HTTP interface.</li>
-        <li><code>jsonc-parser</code>: Parsing JSON with comments.</li>
-        <li><code>winston</code>: Logging library for detailed logs.</li>
-        <li><code>winston-daily-rotate-file</code>: Log rotation for maintaining daily log files.</li>
-    </ul>
+<h2>Requirements</h2>
+<ul>
+    <li>Node.js (v12 or higher recommended)</li>
+    <li>PLCs with PUT/GET communication enabled</li>
+    <li>Optimized block access disabled for Data Blocks that need to be shared</li>
+</ul>
 
-    <h3>3. Running the Application</h3>
-    <p>To start the application, use the following command:</p>
-    <pre><code>node app.js</code></pre>
+<h2>Installation</h2>
+<ol>
+    <li>Clone the repository or copy the files to your desired location.</li>
+    <li>Install the required Node.js modules by running:
+        <pre><code>npm install</code></pre>
+    </li>
+    <li>Make sure to edit the <code>config.json</code> to match your PLC setup.</li>
+    <li>Start the program using:
+        <pre><code>node index.js</code></pre>
+    </li>
+</ol>
 
-    <h2>Configuration File (config.json)</h2>
-    <p>The <code>config.json</code> file is used to configure the application settings and define the PLCs involved in the synchronization process. Below is an example of the configuration file and an explanation of its fields.</p>
+<p>Alternatively, you can use PM2 to run the program in the background and ensure it starts automatically on boot:</p>
+<ol>
+    <li>Install PM2 globally:
+        <pre><code>npm install -g pm2</code></pre>
+    </li>
+    <li>Start the program with PM2:
+        <pre><code>pm2 start index.js --name plc-sync-server</code></pre>
+    </li>
+    <li>To ensure PM2 restarts on server reboot:
+        <pre><code>pm2 save
+pm2 startup</code></pre>
+    </li>
+</ol>
 
-    <pre><code>{
+<h2>Configuration</h2>
+<p>The configuration file (<code>config.json</code>) defines the PLCs, shared data, and server settings. Here is an example configuration:</p>
+<pre><code>{
   "operationInterval": 2000,
   "maxReconnectAttempts": 10,
   "reconnectInterval": 5000,
-  "heartbeatOffset": 8,
   "httpPort": 3010,
+  "apiConfig": {
+    "baseUrl": "http://localhost",
+    "dataEndpoint": "/data",
+    "manualEndpoint": "/manual"
+  },
   "plcs": [
     {
       "name": "PLC_SERVER",
@@ -57,11 +96,11 @@
       "rack": 0,
       "slot": 1,
       "syncDbOffset": 0,
-      "syncDbNumber": 200,
       "dbNumber": 17,
       "variables": {
-        "cip_pump_speed_control": { "type": "INT", "offset": 0 },
-        "heartbeat": { "type": "INT", "offset": 2 }
+        "cip_pump_enable_state": { "type": "INT", "offset": 0 },
+        "buffer1_temperature": { "type": "REAL", "offset": 2 },
+        "buffer2_temperature": { "type": "REAL", "offset": 6 }
       }
     },
     {
@@ -69,8 +108,7 @@
       "ip": "192.168.178.184",
       "rack": 0,
       "slot": 1,
-      "syncDbOffset": 4,
-      "syncDbNumber": 200,
+      "syncDbOffset": 50,
       "dbNumber": 17,
       "variables": {
         "cip_pump_speed_state": { "type": "INT", "offset": 0 },
@@ -80,68 +118,101 @@
   ]
 }</code></pre>
 
-    <h3>Explanation of Configuration Fields</h3>
-    <ul>
-        <li><strong>operationInterval</strong>: Interval (in milliseconds) at which the program performs read and write operations for all PLCs.</li>
-        <li><strong>maxReconnectAttempts</strong>: The maximum number of reconnection attempts for each PLC before giving up.</li>
-        <li><strong>reconnectInterval</strong>: Interval (in milliseconds) between reconnection attempts.</li>
-        <li><strong>heartbeatOffset</strong>: The offset used for the server heartbeat variable in the synchronization data block.</li>
-        <li><strong>httpPort</strong>: Port number on which the Express server will run to serve the HTTP interface.</li>
-        <li><strong>plcs</strong>: Array of PLC configurations:</li>
+<h3>Explanation of Configuration</h3>
+<ul>
+    <li><strong>operationInterval</strong>: Interval (in milliseconds) at which data synchronization occurs.</li>
+    <li><strong>maxReconnectAttempts</strong>: Number of attempts to reconnect to a PLC after a connection failure.</li>
+    <li><strong>reconnectInterval</strong>: Interval (in milliseconds) between reconnection attempts.</li>
+    <li><strong>httpPort</strong>: Port number for the HTTP server.</li>
+    <li><strong>apiConfig</strong>: Contains configuration for the HTTP API.
         <ul>
-            <li><strong>name</strong>: Unique name of the PLC.</li>
-            <li><strong>ip</strong>: IP address of the PLC.</li>
-            <li><strong>rack</strong>: Rack number of the PLC.</li>
-            <li><strong>slot</strong>: Slot number of the PLC.</li>
-            <li><strong>syncDbOffset</strong>: Offset for the data in the synchronization block for each PLC.</li>
-            <li><strong>syncDbNumber</strong>: Data block number used for synchronizing data for each specific PLC.</li>
-            <li><strong>dbNumber</strong>: Data block number used for reading from each specific PLC.</li>
-            <li><strong>variables</strong>: List of variables for each PLC:</li>
-            <ul>
-                <li><strong>type</strong>: Data type of the variable (e.g., <code>INT</code>, <code>BOOL</code>, <code>REAL</code>).</li>
-                <li><strong>offset</strong>: Offset of the variable within the data block.</li>
-            </ul>
+            <li><strong>baseUrl</strong>: Base URL of the API.</li>
+            <li><strong>dataEndpoint</strong>: Endpoint for accessing combined PLC data.</li>
+            <li><strong>manualEndpoint</strong>: Endpoint for accessing the manual.</li>
         </ul>
-    </ul>
+    </li>
+    <li><strong>plcs</strong>: Array of PLC configurations.
+        <ul>
+            <li><strong>name</strong>: A unique identifier for the PLC.</li>
+            <li><strong>ip</strong>: IP address of the PLC.</li>
+            <li><strong>rack</strong>: Rack number for the PLC.</li>
+            <li><strong>slot</strong>: Slot number for the PLC.</li>
+            <li><strong>syncDbOffset</strong>: Offset within the synchronization Data Block for this PLC's data.</li>
+            <li><strong>dbNumber</strong>: Data Block number to be read from/written to.</li>
+            <li><strong>variables</strong>: Defines the variables to be read or written.
+                <ul>
+                    <li><strong>type</strong>: Data type of the variable (<code>INT</code>, <code>REAL</code>, <code>BOOL</code>).</li>
+                    <li><strong>offset</strong>: Byte offset of the variable within the Data Block.</li>
+                </ul>
+            </li>
+        </ul>
+    </li>
+</ul>
 
-    <h3>Examples of Variable Definitions</h3>
-    <p>Below are examples of how to define different types of variables:</p>
-    <ul>
-        <li><strong>Integer (INT)</strong>: <code>"cip_pump_speed_control": { "type": "INT", "offset": 0 }</code></li>
-        <li><strong>Boolean (BOOL)</strong>: <code>"pump_active": { "type": "BOOL", "byte": 3, "bit": 0 }</code></li>
-        <li><strong>Real (REAL)</strong>: <code>"temperature": { "type": "REAL", "offset": 4 }</code></li>
-        <li><strong>Array of Integers</strong>: <code>"pressure_values": [ { "type": "INT", "offset": 6 }, { "type": "INT", "offset": 8 } ]</code></li>
-    </ul>
+<h3>Example Variable Definitions</h3>
+<p>The configuration allows different types of variables to be defined, such as:</p>
+<ul>
+    <li><strong>Integer</strong> (<code>INT</code>):
+        <pre><code>"variable_name": { "type": "INT", "offset": 0 }</code></pre>
+    </li>
+    <li><strong>Boolean</strong> (<code>BOOL</code>):
+        <pre><code>"variable_name": { "type": "BOOL", "byte": 2, "bit": 3 }</code></pre>
+    </li>
+    <li><strong>Real Number</strong> (<code>REAL</code>):
+        <pre><code>"variable_name": { "type": "REAL", "offset": 4 }</code></pre>
+    </li>
+</ul>
 
-    <h2>Running the Application with PM2</h2>
-    <p>PM2 is a process manager for Node.js applications that allows you to keep your application running, restart it on failure, and ensure it starts on boot. Below are instructions on how to set up PM2 to run the PLC Synchronization Application:</p>
+<h2>Data Synchronization and Server Heartbeat</h2>
+<p>The server combines data from all configured PLCs and synchronizes it back. A server heartbeat is included in the data, allowing PLCs to verify the freshness of the data they receive. The offset for this heartbeat is now calculated automatically to ensure it comes after all other variables in the sync data block.</p>
 
-    <h3>Install PM2</h3>
-    <p>First, install PM2 globally using npm:</p>
-    <pre><code>npm install -g pm2</code></pre>
+<p>The synchronization mechanism ensures that all PLCs receive updated data, including any commands or status changes requested by other PLCs.</p>
 
-    <h3>Start the Application with PM2</h3>
-    <p>Navigate to the directory where your application is located and start it with PM2:</p>
-    <pre><code>pm2 start app.js --name "plc-sync-app"</code></pre>
-    <p>The <code>--name</code> flag assigns a custom name to your process, making it easier to manage.</p>
+<h2>HTTP API</h2>
+<p>The server provides a simple HTTP API for monitoring purposes:</p>
+<ul>
+    <li><strong>Data Endpoint</strong> (<code>/data</code>): Returns JSON with the following information:
+        <ul>
+            <li><code>serverHeartbeat</code>: Heartbeat value to check if the server is running.</li>
+            <li><code>combinedData</code>: All synchronized data from the PLCs.</li>
+            <li><code>counters</code>: Read and write counters for each PLC.</li>
+            <li><code>manualURL</code>: URL for accessing the manual.</li>
+        </ul>
+    </li>
+    <li><strong>Manual Endpoint</strong> (<code>/manual</code>): Returns the HTML manual.</li>
+</ul>
 
-    <h3>Save the PM2 Process List</h3>
-    <p>To ensure that your application restarts on system reboot, save the PM2 process list:</p>
-    <pre><code>pm2 save</code></pre>
+<p>To access the API, use the following URLs:</p>
+<ul>
+    <li>Data: <code>${baseUrl}:${httpPort}${dataEndpoint}</code></li>
+    <li>Manual: <code>${baseUrl}:${httpPort}${manualEndpoint}</code></li>
+</ul>
 
-    <h3>Set Up PM2 to Start on Boot</h3>
-    <p>To configure PM2 to start on system boot, use the following command:</p>
-    <pre><code>pm2 startup</code></pre>
-    <p>Follow the instructions provided by the command to complete the setup.</p>
+<h2>Logging</h2>
+<p>Logs are created daily and rotated automatically. The following types of logs are available:</p>
+<ul>
+    <li><strong>Info Logs</strong>: General information, including successful connections and data synchronization events.</li>
+    <li><strong>Error Logs</strong>: Errors that occur during PLC communication or server operations.</li>
+</ul>
 
-    <h2>HTTP Interface</h2>
-    <p>The application provides an HTTP interface that allows you to access the combined data and various counters. By default, it runs on the port specified in the configuration file.</p>
-    <h3>Endpoints</h3>
-    <ul>
-        <li><strong>/data</strong>: Provides the current synchronized data along with the server heartbeat, read counters, write counters, and a link to the manual.</li>
-        <li><strong>/manual</strong>: Provides access to the online manual for the application.</li>
-    </ul>
+<h2>Adding or Removing PLCs</h2>
+<p>To add or remove a PLC, update the <code>config.json</code> file and restart the server. The program will automatically establish connections to the newly added PLCs and integrate them into the data synchronization process.</p>
+
+<h2>Running in Production</h2>
+<p>For production environments, it's recommended to use PM2 to manage the process. This ensures the server will automatically restart in case of an error or system reboot.</p>
+
+<h2>Security Considerations</h2>
+<p>No security measures are implemented in this program. Ensure that appropriate security measures are taken when deploying in a production environment, such as network isolation or VPNs.</p>
+
+<h2>Troubleshooting</h2>
+<ul>
+    <li><strong>Connection Issues</strong>: If the server cannot connect to a PLC, check the IP address, rack, and slot configuration in <code>config.json</code>. Also, ensure the PLC allows PUT/GET communication.</li>
+    <li><strong>Data Not Syncing</strong>: Verify that the Data Blocks in the PLC have optimized block access disabled.</li>
+    <li><strong>Heartbeat Issues</strong>: Ensure the heartbeat value is being updated correctly by the server and that each PLC is reading the heartbeat to confirm the data is fresh.</li>
+</ul>
+
+<h2>Contact</h2>
+<p>For more information, refer to the online manual or open an issue on the GitHub repository.</p>
 
 </body>
 </html>
-

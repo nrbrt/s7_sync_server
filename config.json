@@ -2,7 +2,6 @@
   "operationInterval": 500,
   "maxReconnectAttempts": 10,
   "reconnectInterval": 5000,
-  "heartbeatOffset": 56,
   "httpPort": 3010,
   "apiConfig": {
     "baseUrl": "http://192.168.178.73",  
@@ -31,7 +30,8 @@
         "buffer1_volume": {"type": "REAL", "offset": 30},
         "buffer2_volume": {"type": "REAL", "offset": 34},
         "buffer3_volume": {"type": "REAL", "offset": 38},
-        "buffers_ready_to_fill": {"type": "BOOL", "byte": 42, "bit": 0}
+        "buffers_ready_to_fill": {"type": "BOOL", "byte": 42, "bit": 0},
+        "cip_to_circulation_state": {"type": "BOOL", "byte": 42, "bit": 1}
       }
     },
     {

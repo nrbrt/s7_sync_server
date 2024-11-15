@@ -88,29 +88,49 @@ for (const targetPlc of config.plcs) {
   }
 
   // Write Variables for All PLCs (including server heartbeat)
-for (const sourcePlc of config.plcs) {
-  const sourceOffset = sourcePlc.syncDbOffset;
 
-  for (const [key, descriptor] of Object.entries(sourcePlc.variables)) {
-    if (Array.isArray(descriptor)) {
-      descriptor.forEach((desc, index) => {
-        const varName = `${sourcePlc.name}__write__${key}_${index}`;
-        plcVars[targetPlc.name][varName] = `DB${targetPlc.syncDbNumber},${desc.type}${desc.offset + sourceOffset}`;
-      });
-    } else if (descriptor.type === "BOOL") {
-      const varName = `${sourcePlc.name}__write__${key}`;
-      plcVars[targetPlc.name][varName] = `DB${targetPlc.syncDbNumber},X${descriptor.byte + sourceOffset}.${descriptor.bit}`;
-    } else {
-      const varName = `${sourcePlc.name}__write__${key}`;
-      plcVars[targetPlc.name][varName] = `DB${targetPlc.syncDbNumber},${descriptor.type}${descriptor.offset + sourceOffset}`;
+  let currentOffset = 0;
+
+  for (const sourcePlc of config.plcs) {
+    const sourceOffset = sourcePlc.syncDbOffset;
+
+    for (const [key, descriptor] of Object.entries(sourcePlc.variables)) {
+      if (Array.isArray(descriptor)) {
+        descriptor.forEach((desc, index) => {
+          const varName = `${sourcePlc.name}__write__${key}_${index}`;
+          plcVars[targetPlc.name][varName] = `DB${targetPlc.syncDbNumber || config.syncDbNumber},${desc.type}${desc.offset + sourceOffset}`;
+          currentOffset = Math.max(currentOffset, desc.offset + sourceOffset + getSizeOfType(desc.type));
+        });
+      } else if (descriptor.type === "BOOL") {
+        const varName = `${sourcePlc.name}__write__${key}`;
+        plcVars[targetPlc.name][varName] = `DB${targetPlc.syncDbNumber || config.syncDbNumber},X${descriptor.byte + sourceOffset}.${descriptor.bit}`;
+        currentOffset = Math.max(currentOffset, descriptor.byte + sourceOffset + 1); // BOOLs are 1 bit, increment accordingly
+      } else {
+        const varName = `${sourcePlc.name}__write__${key}`;
+        plcVars[targetPlc.name][varName] = `DB${targetPlc.syncDbNumber || config.syncDbNumber},${descriptor.type}${descriptor.offset + sourceOffset}`;
+        currentOffset = Math.max(currentOffset, descriptor.offset + sourceOffset + getSizeOfType(descriptor.type));
+      }
     }
   }
+
+  // Server Heartbeat Variable - place after all PLC variables
+  const heartbeatVarName = `${targetPlc.name}__write__server_heartbeat`;
+  plcVars[targetPlc.name][heartbeatVarName] = `DB${targetPlc.syncDbNumber || config.syncDbNumber},INT${currentOffset}`;
 }
 
-// Server Heartbeat Variable
-const heartbeatVarName = `${targetPlc.name}__write__server_heartbeat`;
-plcVars[targetPlc.name][heartbeatVarName] = `DB${targetPlc.syncDbNumber},INT${config.heartbeatOffset || 0}`;
-}
+// Helper function to determine the size of each data type
+function getSizeOfType(type) {
+    switch (type) {
+      case 'BOOL':
+        return 1; // 1 bit
+      case 'INT':
+        return 2; // 2 bytes
+      case 'REAL':
+        return 4; // 4 bytes
+      default:
+        throw new Error(`Unknown data type: ${type}`);
+    }
+  }
 
 // Debug: Log all variable mappings
 for (const plcName in plcVars) {
