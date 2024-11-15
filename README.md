@@ -55,11 +55,10 @@ The configuration file (`config.json`) defines the PLCs, shared data, and server
   "operationInterval": 2000,
   "maxReconnectAttempts": 10,
   "reconnectInterval": 5000,
-  "heartbeatOffset": 46,
   "httpPort": 3010,
   "syncDbNumber": 200,
   "apiConfig": {
-    "baseUrl": "http://localhost",
+    "baseUrl": "http://192.168.178.73",
     "dataEndpoint": "/data",
     "manualEndpoint": "/manual"
   },
@@ -98,7 +97,6 @@ The configuration file (`config.json`) defines the PLCs, shared data, and server
 - **operationInterval**: Interval (in milliseconds) at which data synchronization occurs.
 - **maxReconnectAttempts**: Number of attempts to reconnect to a PLC after a connection failure.
 - **reconnectInterval**: Interval (in milliseconds) between reconnection attempts.
-- **heartbeatOffset**: The offset in the data block for the server's heartbeat value. This is now automatically calculated based on the other variables defined.
 - **httpPort**: Port number for the HTTP server.
 - **syncDbNumber**: Default Data Block number used for synchronization. Individual PLCs can override this value.
 - **apiConfig**: Contains configuration for the HTTP API.
