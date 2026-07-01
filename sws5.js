@@ -30,7 +30,7 @@ const httpsOptions = {
 
 // Read and parse the configuration file with comments
 const { loadConfig } = require('./config-loader');
-const config = loadConfig('config.new.json');
+const config = loadConfig('config.json');
 const DRY_RUN = config.dryRun === true;
 if (DRY_RUN) logger.warn('sws4 running in DRY-RUN mode: sync writes are computed and logged but NOT written to PLCs.');
 
