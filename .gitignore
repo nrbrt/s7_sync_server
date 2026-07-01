@@ -1,0 +1,21 @@
+# Dependencies
+node_modules/
+
+# Live config and secrets — never commit these.
+# Copy config.example.json -> config.json and credentials.example.json -> credentials.json
+config.json
+sconfig.json
+config.json.bak
+config.json.ancient
+config.new.json
+credentials.json
+
+# TLS material
+certs/
+*.pem
+
+# Runtime logs and log-rotation state
+*.log
+plc-*.log
+*-audit.json
+.*-audit.json

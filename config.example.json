@@ -1,0 +1,66 @@
+{
+  // How often (ms) the server reads every PLC and writes the combined data back.
+  "operationInterval": 5000,
+
+  // Reconnection behaviour for a dropped PLC connection.
+  "maxReconnectAttempts": 5,
+  "reconnectInterval": 1000,
+
+  // Port the HTTPS server / JSON API listens on.
+  "httpPort": 3011,
+
+  // Base URL + endpoint paths the built-in web GUI uses to reach this server.
+  "apiConfig": {
+    "baseUrl": "https://YOUR_SERVER_IP",
+    "dataEndpoint": "/data",
+    "manualEndpoint": "/manual",
+    "guiEndpoint": "/gui"
+  },
+
+  // One entry per PLC.
+  //   dbNumber     = the DB this PLC shares (its "share_this_data" block)
+  //   syncDbNumber = the combined sync DB present on every PLC (DB200 convention)
+  //   variables    = BOOL -> { type, byte, bit } ; INT/REAL -> { type, offset }
+  // The server attaches no meaning to variable names; structure the shared data
+  // however you like. The names below are generic placeholders.
+  "plcs": [
+    {
+      "name": "PLC_1",
+      "ip": "192.0.2.10",
+      "rack": 0,
+      "slot": 1,
+      "dbNumber": 1,
+      "syncDbNumber": 200,
+      "variables": {
+        "machine_running": { "type": "BOOL", "byte": 0, "bit": 0 },
+        "current_speed":   { "type": "INT",  "offset": 2 },
+        "temperature":     { "type": "REAL", "offset": 4 }
+      }
+    },
+    {
+      "name": "PLC_2",
+      "ip": "192.0.2.11",
+      "rack": 0,
+      "slot": 1,
+      "dbNumber": 1,
+      "syncDbNumber": 200,
+      "variables": {
+        "setpoint_speed": { "type": "INT",  "offset": 0 },
+        "fault_active":   { "type": "BOOL", "byte": 2, "bit": 0 }
+      }
+    }
+  ],
+
+  // Optional MQTT brokers. Leave as [] if you do not use MQTT.
+  "mqttConfigs": [
+    {
+      "brokerUrl": "mqtt://broker.example.com:1883",
+      // Incoming topics merged into the shared data set (optional).
+      "subscribeTopics": {
+        "plc/setpoint": { "dataType": "INT", "syncVariable": "setpoint_speed" }
+      },
+      // Topic the combined PLC data + server heartbeat is published to.
+      "publishTopic": "plc/data"
+    }
+  ]
+}

@@ -4,215 +4,552 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PLC Sync Server Manual</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Favicon Files -->
+    <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    <link rel="shortcut icon" href="/favicon.ico">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="manifest" href="/site.webmanifest">
     <style>
         body {
-            font-family: Arial, sans-serif;
-            line-height: 1.6;
-            max-width: 800px;
-            margin: auto;
-            padding: 20px;
-        }
-        h1, h2, h3 {
-            color: blue;
-        }
-        code {
-            background-color: #f4f4f4;
-            padding: 2px 4px;
-            border-radius: 4px;
-        }
-        pre {
-            background-color: #f4f4f4;
-            padding: 10px;
-            border-radius: 4px;
-            overflow-x: auto;
+            padding-top: 56px; /* Adjust padding to match navbar height */
         }
     </style>
 </head>
 <body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+        <div class="container-fluid">
+          <a class="navbar-brand" href="#">
+            <img src="/static/ScotsPinelogo-medium.png" alt="ScotsPine Logo" style="height: 40px; margin-right: 10px;"/>
+            PLC Sync Server
+          </a>
+          <button class="navbar-toggler" type="button" data-toggle="collapse" 
+                  data-target="#navbarNav" aria-controls="navbarNav" 
+                  aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+          </button>
+          <div class="collapse navbar-collapse" id="navbarNav">
+            <!-- Left-side links -->
+            <ul class="navbar-nav mr-auto">
+                <li class="nav-item">
+                  <a class="nav-link" href="/gui">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="/setup">Setup</a>
+                </li>
+                <li class="nav-item">
+                  <a class="nav-link" href="/fields">Field Manager</a>
+                </li>
+                <li class="nav-item active">
+                  <a class="nav-link" href="/manual"><u>Manual</u></a>
+                </li>
+            </ul>
+            <!-- Right-side: Logout link -->
+            <ul class="navbar-nav ml-auto">
+              <li class="nav-item">
+                <a class="nav-link" href="/logout">Logout</a>
+              </li>
+            </ul>
+          </div>
+        </div>
+    </nav>
 
-<h1>PLC Sync Server Manual</h1>
+    <div class="container mt-5">
+        <h2>Introduction</h2>
+        <p>
+            This program provides a flexible and scalable way to share and synchronize data between multiple Siemens S7-1200 PLCs. Instead of the traditional Siemens PUT/GET method where PLCs communicate directly, this server acts as a centralized intermediary: reading data from each PLC and writing it back to all PLCs in a designated synchronization data block. This allows every PLC to have a real-time snapshot of each other’s data.
+        </p>
+        <p>
+            In addition to its core PLC data synchronization functionality, the server supports MQTT messaging for real-time data exchange. With MQTT integration, the server publishes combined PLC data, a server heartbeat, and external MQTT updates to designated topics. It also subscribes to MQTT topics to receive commands or data updates, enabling seamless integration with external systems and modern IoT platforms.
+        </p>
+        <p>
+            Furthermore, the web interface lets you change variables easily, making it straightforward to adjust parameters and test behavior without modifying the PLC’s code directly.
+        </p>
 
-<h2>Introduction</h2>
-<p>This program is designed to facilitate data sharing between Siemens S7-1200 PLCs. The default Siemens method for sharing data between PLCs can be inflexible, especially when dealing with multiple PLCs. This solution offers a flexible approach, allowing multiple PLCs to share and synchronize data via an intermediary server. The server program is currently implemented in Node.js and can be run on a virtual machine or any compatible environment.</p>
+        <h3>Key Features</h3>
+        <ul>
+            <li>Multi-PLC data sharing and synchronization.</li>
+            <li>HTTPS JSON interface for monitoring combined PLC data and read/write counters.</li>
+            <li>Flexible configuration through a single JSON file.</li>
+            <li>Automated calculation of synchronization offsets, reducing manual configuration.</li>
+            <li>Rotating log files for troubleshooting and monitoring.</li>
+            <li>Web-based GUI for visualization, configuration changes, and control.</li>
+            <li><strong>Field Manager</strong> (<a href="/fields">/fields</a>): add or remove shared fields across all
+                PLCs from one place. It recomputes every offset (each PLC's <code>share_this_data</code> and the
+                combined sync DB) and generates importable TIA <code>.db</code> external-source files, so the three
+                edit sites stay consistent.</li>
+            <li><strong>Pause/Resume Sync</strong> (on the <a href="/setup">Setup</a> page): temporarily suspends only
+                the cross-PLC sync <em>writes</em> while you change DB layouts, without stopping the process.</li>
+            <li>A built-in manual for reference.</li>
+            <li>Real-time MQTT messaging integration for data publishing and subscription.</li>
+        </ul>
 
-<p>Key features include:</p>
-<ul>
-    <li>Data retrieval and synchronization between PLCs.</li>
-    <li>HTTP JSON interface for troubleshooting, providing read/write counters.</li>
-    <li>Configurable via a JSON configuration file.</li>
-    <li>Log files with rotation for monitoring events.</li>
-    <li>An online manual available through the web interface.</li>
-</ul>
+        <h2>Requirements</h2>
+        <ul>
+            <li>Node.js (v12 or higher recommended)</li>
+            <li>Siemens S7-1200 PLCs with PUT/GET communication enabled</li>
+            <li>Data Blocks (DBs) in the PLCs must have <strong>optimized block access disabled</strong> to allow absolute addressing.</li>
+            <li>PM2 or another Node.js process manager (optional but recommended).</li>
+        </ul>
 
-<h2>Requirements</h2>
-<ul>
-    <li>Node.js (v12 or higher recommended)</li>
-    <li>PLCs with PUT/GET communication enabled</li>
-    <li>Optimized block access disabled for Data Blocks that need to be shared</li>
-</ul>
+        <h2>How It Works</h2>
+        <p>
+            The server periodically reads data from all configured PLCs. It then writes this combined dataset back into each PLC’s designated synchronization DB, ensuring that every PLC can read the same data from all peers. A server heartbeat variable is also updated to confirm that the data is fresh and communication is ongoing.
+        </p>
 
-<h2>Installation</h2>
-<ol>
-    <li>Clone the repository or copy the files to your desired location.</li>
-    <li>Install the required Node.js modules by running:
-        <pre><code>npm install</code></pre>
-    </li>
-    <li>Make sure to edit the <code>config.json</code> to match your PLC setup.</li>
-    <li>Start the program using:
-        <pre><code>node index.js</code></pre>
-    </li>
-</ol>
+        <h2>Installation</h2>
+        <ol>
+            <li>Clone the repository or copy the files to your desired location.</li>
+            <li>Run <code>npm install</code> to install required Node.js modules.</li>
+            <li>Edit <code>config.json</code> to match your PLC setup (see details below), or use the
+                <a href="/fields">Field Manager</a> to add/remove shared fields safely.</li>
+            <li>Start the server with <code>node sws3.js</code>.</li>
+            <li>This deployment runs under PM2 as <code>plc-sync</code>:
+                <code>pm2 start sws3.js --name plc-sync</code>. Restart with <code>pm2 restart plc-sync</code>
+                (or via the Restart button on the <a href="/setup">Setup</a> page).</li>
+        </ol>
 
-<p>Alternatively, you can use PM2 to run the program in the background and ensure it starts automatically on boot:</p>
-<ol>
-    <li>Install PM2 globally:
-        <pre><code>npm install -g pm2</code></pre>
-    </li>
-    <li>Start the program with PM2:
-        <pre><code>pm2 start index.js --name plc-sync-server</code></pre>
-    </li>
-    <li>To ensure PM2 restarts on server reboot:
-        <pre><code>pm2 save
-pm2 startup</code></pre>
-    </li>
-</ol>
+        <h2>Setup &amp; Housekeeping</h2>
+        <p>
+            The configuration editor and various housekeeping tasks have been moved to the <code>/setup</code> page.
+            Here you can modify the <code>config.json</code> file, update credentials, view logs, and restart the server.
+        </p>
 
-<h2>Configuration</h2>
-<p>The configuration file (<code>config.json</code>) defines the PLCs, shared data, and server settings. Here is an example configuration:</p>
-<pre><code>{
-  "operationInterval": 2000,
-  "maxReconnectAttempts": 10,
-  "reconnectInterval": 5000,
-  "httpPort": 3010,
-  "apiConfig": {
-    "baseUrl": "http://localhost",
-    "dataEndpoint": "/data",
-    "manualEndpoint": "/manual"
-  },
+        <h2>HTTP API &amp; Programming Examples</h2>
+        <h3>Important Note:</h3>
+        <p>
+            Since the server is now running over HTTPS with Basic Authentication enabled, all API calls must use <code>https://</code> URLs and include valid credentials.
+            For example, using <code>curl</code> you can include the <code>-u username:password</code> option.
+        </p>
+        <ul>
+            <li>
+                <strong>GET <code>/data</code></strong><br>
+                Returns a JSON object containing the server's heartbeat, combined PLC data, and counters.<br>
+                <em>Example using <code>curl</code>:</em>
+                <pre><code>curl -k -u admin:supersecret https://your-server-ip:port/data</code></pre>
+            </li>
+            <li>
+                <strong>GET <code>/status</code></strong><br>
+                Returns a JSON object describing the status of the server and each PLC.<br>
+                <em>Example:</em>
+                <pre><code>curl -k -u admin:supersecret https://your-server-ip:port/status</code></pre>
+            </li>
+            <li>
+                <strong>GET <code>/manual</code></strong><br>
+                Returns this HTML manual.
+            </li>
+            <li>
+                <strong>GET <code>/gui</code></strong><br>
+                Returns the graphical web interface for managing PLC data and configuration.<br>
+                <em>Example:</em>
+                <pre><code>curl -k -u admin:supersecret https://your-server-ip:port/gui</code></pre>
+            </li>
+            <li>
+                <strong>GET <code>/plc/&lt;plcName&gt;</code></strong><br>
+                Returns the latest data from the specified PLC in JSON format.<br>
+                <em>Example:</em>
+                <pre><code>curl -k -u admin:supersecret https://your-server-ip:port/plc/PLC_MAIN</code></pre>
+            </li>
+            <li>
+                <strong>POST <code>/plc/&lt;plcName&gt;</code></strong><br>
+                Writes data to the specified PLC. The request body should be JSON containing variable names and values.<br>
+                <em>Example:</em>
+                <pre><code>
+curl -k -X POST https://your-server-ip:port/plc/PLC_MAIN \
+     -u admin:supersecret \
+     -H "Content-Type: application/json" \
+     -d '{"machine_running": true, "current_speed": 1200}'
+                </code></pre>
+            </li>
+            <li>
+                <strong>GET <code>/setup</code></strong><br>
+                Returns the setup page for configuration editing, credential updating, log viewing, and server restart.
+            </li>
+            <li>
+                <strong>POST <code>/config</code></strong><br>
+                Replaces the current configuration with a new JSON object (body must contain a <code>plcs</code> array).
+                The current <code>config.json</code> is first copied to <code>config.json.bak</code>; if that backup fails
+                the write is aborted. The new config takes effect on the next restart. This is what the Setup editor and
+                the Field Manager's <em>Replace config.json</em> button call.<br>
+                <em>Example:</em>
+                <pre><code>
+curl -k -X POST https://your-server-ip:port/config \
+     -u admin:supersecret \
+     -H "Content-Type: application/json" \
+     -d '{ "operationInterval": 1000, "plcs": [ ... ] }'
+                </code></pre>
+            </li>
+            <li>
+                <strong>GET <code>/fields</code></strong><br>
+                Returns the Field Manager page (add/remove shared fields, generate importable <code>.db</code> files).
+            </li>
+            <li>
+                <strong>POST <code>/fields/preview</code></strong><br>
+                Generates the new config + <code>.db</code> artifacts for an add/remove operation, without writing anything.
+                Body: <code>{ "op": "add"|"remove", "plc": "&lt;name&gt;", ... }</code> &mdash; add takes a single
+                <code>name</code>+<code>type</code> or a <code>fields</code> array; remove takes a single <code>name</code>.
+                Returns <code>{ newConfig, shareDb, syncedDb, preview }</code>.
+            </li>
+            <li>
+                <strong>POST <code>/sync/pause</code></strong> / <strong>POST <code>/sync/resume</code></strong> /
+                <strong>GET <code>/sync/status</code></strong><br>
+                Pause or resume only the cross-PLC sync <em>write</em> action (reads, status and the web server keep
+                running); query the current state. The flag is in-memory, so a restart always resumes syncing.<br>
+                <em>Example:</em>
+                <pre><code>curl -k -X POST https://your-server-ip:port/sync/pause -u admin:supersecret
+curl -k https://your-server-ip:port/sync/status -u admin:supersecret   # {"paused":true}</code></pre>
+            </li>
+            <li>
+                <strong>POST <code>/update-credentials</code></strong><br>
+                Updates the login credentials. The request body must include a new username and password.<br>
+                <em>Example:</em>
+                <pre><code>
+curl -k -X POST https://your-server-ip:port/update-credentials \
+     -u admin:supersecret \
+     -H "Content-Type: application/json" \
+     -d '{"username": "newUser", "password": "newPass"}'
+                </code></pre>
+            </li>
+            <li>
+                <strong>POST <code>/restart</code></strong><br>
+                Instructs the server to exit gracefully (which will trigger a restart if managed by a process manager).<br>
+                <em>Example:</em>
+                <pre><code>curl -k -X POST https://your-server-ip:port/restart -u admin:supersecret</code></pre>
+            </li>
+            <li>
+                <strong>GET <code>/logs</code></strong><br>
+                Returns an array of available log filenames.<br>
+                <em>Example:</em>
+                <pre><code>curl -k -u admin:supersecret https://your-server-ip:port/logs</code></pre>
+            </li>
+            <li>
+                <strong>GET <code>/logs/&lt;logFile&gt;</code></strong><br>
+                Returns the last 100 lines of the specified log file as plaintext.<br>
+                <em>Example:</em>
+                <pre><code>curl -k -u admin:supersecret https://your-server-ip:port/logs/plc-app-2025-01-31.log</code></pre>
+            </li>
+            <li>
+                <strong>GET <code>/logout</code></strong><br>
+                Logs out the current user by forcing a re-prompt of credentials.<br>
+                <em>Example:</em>
+                <pre><code>curl -k -u admin:supersecret https://your-server-ip:port/logout</code></pre>
+            </li>
+        </ul>
+
+        <h2>Data Synchronization and Server Heartbeat</h2>
+        <p>
+            The server writes a heartbeat variable to the sync DB to verify data freshness. PLCs monitor this variable
+            to detect communication issues. Additionally, each PLC's <em>reachable</em> and <em>alive</em> status is tracked.
+        </p>
+
+        <h2>Example Pattern: a <code>_req</code> / <code>_ack</code> / <code>_state</code> Handshake</h2>
+        <p>
+            <strong>The sync server attaches no meaning to field names or values</strong> &mdash; it simply transports
+            each PLC's shared bytes to every other PLC. You are therefore free to structure the shared data however you
+            like. The pattern below is just <em>one way</em> the PLC programs at this site choose to coordinate over the
+            shared data; it is a convention in the PLC logic, not something the sync layer requires or enforces.
+        </p>
+        <p>
+            In this pattern, fields are named with three suffixes. Each field is written by the PLC in whose
+            <code>share_this_data</code> it is configured, and read by every other PLC via the sync DB (DB200):
+        </p>
+        <ul>
+            <li><strong><code>_req</code> / <code>_request</code></strong> &mdash; the <em>desired</em> state or value,
+                written by the <strong>requesting</strong> PLC. It may carry a setpoint
+                (e.g. <code>pump_speed_request</code> [INT], <code>heating_temperature_request</code> [REAL])
+                or be a simple on/off BOOL.</li>
+            <li><strong><code>_ack</code></strong> (BOOL) &mdash; also written by the <strong>requesting</strong> PLC.
+                <code>false</code> = a request is open / in progress; <code>true</code> = the executor has reached the
+                requested state.</li>
+            <li><strong><code>_state</code> / <code>_stat</code></strong> &mdash; the actual current state or feedback,
+                written by the <strong>executing</strong> PLC; the value the requester compares against.</li>
+        </ul>
+        <h3>The handshake (as implemented in the PLC logic)</h3>
+        <ol>
+            <li>The <strong>requesting</strong> PLC writes the desired state into <code>_req</code> and sets
+                <code>_ack = false</code> &mdash; this opens the request.</li>
+            <li>The <strong>executing</strong> PLC looks for a requester whose <code>_ack</code> is <code>false</code>
+                and drives its output to that <code>_req</code> state, reflecting it in its own <code>_state</code>.</li>
+            <li>The <strong>requesting</strong> PLC compares the executor's <code>_state</code> against <code>_req</code>;
+                once they match it sets <code>_ack = true</code>, closing the handshake.</li>
+        </ol>
+        <p>
+            That is why, in this pattern, the requesting PLC owns <em>both</em> <code>_req</code> and <code>_ack</code>
+            while the executing PLC owns <code>_state</code>. It is level-based and tolerant of the cyclic sync latency:
+            while <code>_ack</code> stays <code>false</code> the executor keeps driving toward <code>_req</code>, and the
+            requester only confirms once the real <code>_state</code> actually matches.
+        </p>
+        <p>
+            Multiple requesters each use their own <code>_req</code>/<code>_ack</code> pair, so independent requests run
+            as parallel handshakes. For a <em>shared</em> output the executor services the most recent open request
+            (last come, last served); this stays stable as long as a satisfied requester (<code>_ack = true</code>) does
+            not re-open when a later request moves the shared <code>_state</code>.
+        </p>
+        <p>
+            <em>Example.</em> To start a pump on <strong>PLC_B</strong>, <strong>PLC_A</strong> sets
+            <code>pump_a_req = true</code> and <code>pump_a_ack = false</code>. <strong>PLC_B</strong> sees
+            the open request, runs the pump and publishes <code>pump_a_state = true</code>. PLC_A sees
+            <code>pump_a_state</code> match its request and sets <code>pump_a_ack = true</code>. The reverse
+            direction works the same way (e.g. PLC_A requests <code>pump_b_motor</code> from PLC_B, which publishes
+            <code>pump_b_motor_state</code>), and a request/ack pair can live on each side when either PLC may
+            initiate.
+        </p>
+
+        <h2>Field Manager &amp; Changing Shared Fields</h2>
+        <p>
+            A shared field lives in three places that must stay consistent: the source PLC's
+            <code>share_this_data</code> DB, the combined sync DB (DB200) on <em>every</em> PLC, and the offsets in
+            <code>config.json</code>. The <a href="/fields">Field Manager</a> automates this: pick a PLC and add
+            (one or several) or remove a field, and it recomputes all offsets and generates the importable TIA
+            <code>.db</code> external-source files (<code>share_this_data.&lt;PLC&gt;.db</code> and
+            <code>synced_data.db</code>) plus the updated <code>config.json</code>. <code>config.json</code> is the
+            single source of truth for field <em>names</em>.
+        </p>
+        <p>
+            Each preview reports whether the change is <strong>hot-safe</strong>. Only appending a field to the
+            <em>last</em> PLC in config order is truly hot-safe (nothing shifts in DB200). Adding to any other PLC shifts
+            every downstream PLC's base offset in DB200, and removing repacks the block &mdash; both relocate live data,
+            so they need a coordinated rollout.
+        </p>
+
+        <h3>Pausing the sync</h3>
+        <p>
+            On the <a href="/setup">Setup</a> page, <strong>Pause Sync</strong> suspends only the cross-PLC sync
+            <em>write</em> action. The process, web interface and PLC reads keep running; the shared values in DB200 simply
+            freeze at their last-synced state until you resume. The flag is in-memory, so restarting the server always
+            resumes syncing. Use it to close the window where the running server would otherwise write the old DB200 layout
+            onto a PLC that already has the new one.
+        </p>
+
+        <h3>Recommended workflow for a layout change</h3>
+        <ol>
+            <li>In the Field Manager, make the change(s) and click <strong>Replace config.json</strong> (the running server
+                keeps syncing on its old in-memory config &mdash; no disruption yet; the old file is saved as
+                <code>config.json.bak</code>). Download the generated <code>.db</code> files.</li>
+            <li>On Setup, click <strong>Pause Sync</strong> &mdash; right before touching the PLCs, to keep the disruption
+                window as short as possible.</li>
+            <li>In TIA, import the new <code>share_this_data.&lt;PLC&gt;.db</code> into each edited PLC and the new
+                <code>synced_data.db</code> into <em>all</em> PLCs.</li>
+            <li><strong>Restart</strong> plc-sync. The new <code>config.json</code> loads and, because a restart clears the
+                pause flag, syncing resumes automatically on the new, consistent layout.</li>
+        </ol>
+        <p>
+            For multiple PLCs in one session: edit a PLC, Replace, then edit the next (the preview always re-reads
+            <code>config.json</code> from disk, so Replace between PLCs is what accumulates the changes). Each
+            <code>share_this_data.&lt;PLC&gt;.db</code> only needs the version from when that PLC was edited; use the
+            <em>last</em> <code>synced_data.db</code> on all PLCs.
+        </p>
+
+        <h2>Logging</h2>
+        <p>
+            The server creates daily rotated log files:
+        </p>
+        <ul>
+            <li><strong>Info Logs:</strong> Connection events, synchronization events, etc.</li>
+            <li><strong>Error Logs:</strong> Connection issues, read/write errors, or internal server issues.</li>
+        </ul>
+
+        <h2>Troubleshooting</h2>
+        <ul>
+            <li><strong>Connection Issues:</strong> Verify the PLC’s IP, rack, slot, and PUT/GET settings. Ensure that firewall or network rules allow port 102.</li>
+            <li><strong>Data Not Syncing:</strong> Check that DBs are not optimized and that absolute addressing is correctly configured.</li>
+            <li><strong>Heartbeat Stagnant:</strong> If the heartbeat does not change, confirm that the PLC logic is running and that the correct DB address is read.</li>
+            <li><strong>Reachable but Not Alive:</strong> If the server connects but the PLC appears unresponsive, verify the PLC's heartbeat updating logic.</li>
+        </ul>
+
+        <h2>Web-Based GUI Features</h2>
+        <ul>
+            <li><strong>Configuration Editor:</strong> Edit and save the <code>config.json</code> file via the setup page.</li>
+            <li><strong>Combined Data View:</strong> View all PLC data combined, refreshed periodically.</li>
+            <li><strong>Individual PLC Control:</strong> Inspect and adjust specific PLC variables.</li>
+            <li><strong>Field Manager:</strong> Add/remove shared fields and generate importable <code>.db</code> files (see above).</li>
+            <li><strong>Pause/Resume Sync:</strong> Suspend the sync writes during a layout change, from the Setup page.</li>
+            <li><strong>Log Viewer:</strong> Browse server logs for troubleshooting.</li>
+            <li><strong>Update Credentials:</strong> Change the login username and password securely through the setup page.</li>
+        </ul>
+
+        <h2>MQTT Integration</h2>
+        <p>
+            In addition to the HTTPS API, the PLC Sync Server supports MQTT messaging for real-time data exchange.
+            This integration allows the server to both receive and publish MQTT messages, enabling seamless communication with external systems.
+        </p>
+        <h3>MQTT Subscriber Functionality</h3>
+        <p>
+            For each configured MQTT broker, the server establishes a connection and subscribes to topics as defined in the configuration file.
+            Incoming MQTT messages are processed based on their data type (such as BOOL, INT, or REAL) and merged into the overall data set.
+            This mechanism allows external MQTT clients to send updates or commands that can be integrated with the PLC data.
+        </p>
+        <h3>MQTT Publisher Functionality</h3>
+        <p>
+            The server also acts as an MQTT publisher. At every update cycle, it constructs a JSON payload that includes:
+        </p>
+        <ul>
+            <li><strong>Server Heartbeat:</strong> A counter to verify data freshness and system activity.</li>
+            <li><strong>Combined PLC Data:</strong> The aggregated data from all connected PLCs.</li>
+            <li><strong>MQTT Data:</strong> Data received via subscribed MQTT topics.</li>
+        </ul>
+        <p>
+            This payload is published to a topic specified in the configuration. External systems can subscribe to these topics
+            to receive real-time updates on the state of the PLC network.
+        </p>
+        <p>
+            To utilize MQTT features, ensure that your <code>config.json</code> includes valid MQTT configurations with the broker URL, subscription topics, and a publish topic.
+        </p>
+
+        <h2>Configuration File (config.json) Syntax and Data Types</h2>
+        <p>
+            The <code>config.json</code> file (or its commented equivalent) is the central location for configuring the server, PLC connections, API endpoints, MQTT settings, and operational parameters.
+        </p>
+        <h3>General Structure</h3>
+        <p>
+            The file typically includes sections such as:
+        </p>
+        <ul>
+            <li><strong>httpPort:</strong> The port on which the HTTPS server will listen.</li>
+            <li><strong>operationInterval:</strong> The interval (in milliseconds) between successive data update cycles.</li>
+            <li><strong>maxReconnectAttempts</strong> and <strong>reconnectInterval:</strong> Parameters that control the reconnection behavior for PLC connections.</li>
+        </ul>
+        <h3>PLC Configurations</h3>
+        <p>
+            The <code>plcs</code> array contains one or more PLC objects. Each PLC object includes:
+        </p>
+        <ul>
+            <li><strong>name:</strong> A unique identifier for the PLC.</li>
+            <li><strong>ip:</strong> The IP address of the PLC.</li>
+            <li><strong>rack</strong> and <strong>slot:</strong> Siemens S7 connection parameters.</li>
+            <li><strong>dbNumber:</strong> The Data Block number used for normal PLC communication.</li>
+            <li><strong>variables:</strong> An object defining the variables used by the PLC. Each variable is defined by a descriptor that includes:
+                <ul>
+                    <li><strong>type:</strong> Data type, such as <code>BOOL</code>, <code>INT</code>, or <code>REAL</code>. These types determine:
+                        <ul>
+                            <li><strong>BOOL:</strong> Typically represents a single bit within a byte. Mapped as <code>DBx,Xbyte.bit</code>.</li>
+                            <li><strong>INT:</strong> Occupies 2 bytes, used for integer values.</li>
+                            <li><strong>REAL:</strong> Occupies 4 bytes, used for floating point numbers.</li>
+                        </ul>
+                    </li>
+                    <li><strong>offset:</strong> For <code>INT</code> and <code>REAL</code>, this specifies the starting byte offset within the DB.</li>
+                    <li><strong>byte</strong> and <strong>bit:</strong> For <code>BOOL</code> types, these define the exact byte and bit where the value is stored.</li>
+                </ul>
+            </li>
+            <li><strong>syncDbOffset:</strong> Calculated automatically to assign a unique memory region for data synchronization.</li>
+        </ul>
+        <h3>MQTT Configurations</h3>
+        <p>
+            The <code>mqttConfigs</code> array holds configurations for one or more MQTT brokers. Each configuration object typically includes:
+        </p>
+        <ul>
+            <li><strong>brokerUrl:</strong> The URL of the MQTT broker.</li>
+            <li><strong>subscribeTopics:</strong> An object where each key is a topic to subscribe to. Each topic maps to an object containing:
+                <ul>
+                    <li><strong>dataType:</strong> The expected data type for the incoming message (e.g. <code>BOOL</code>, <code>INT</code>, <code>REAL</code>). This instructs the server how to convert the incoming string message.</li>
+                    <li><strong>syncVariable:</strong> The name of the variable that will be updated with the MQTT message’s value.</li>
+                </ul>
+            </li>
+            <li><strong>publishTopic:</strong> The topic to which the combined PLC data payload (including heartbeat and MQTT data) will be published.</li>
+        </ul>
+        <p>
+            By clearly defining data types in both PLC and MQTT configurations, the server can accurately map and convert data between the raw PLC memory addresses and the external JSON messages used for monitoring and control.
+        </p>
+
+        <h2>Example config.json File</h2>
+        <p>
+            Below is an example of a <code>config.json</code> file. This file sets up the server’s listening port, operational parameters, and defines configurations for two PLCs as well as one MQTT broker. You can modify this file to match your specific PLC network and MQTT broker settings.
+        </p>
+        <pre><code>{
+  "httpPort": 8443,
+  "operationInterval": 5000,
+  "maxReconnectAttempts": 5,
+  "reconnectInterval": 1000,
+  "syncDbNumber": 10,
   "plcs": [
     {
-      "name": "PLC_SERVER",
-      "ip": "192.168.178.190",
+      "name": "PLC_MAIN",
+      "ip": "192.168.1.10",
       "rack": 0,
       "slot": 1,
-      "syncDbOffset": 0,
-      "dbNumber": 17,
+      "dbNumber": 1,
       "variables": {
-        "cip_pump_enable_state": { "type": "INT", "offset": 0 },
-        "buffer1_temperature": { "type": "REAL", "offset": 2 },
-        "buffer2_temperature": { "type": "REAL", "offset": 6 }
+        "machine_running": {
+          "type": "BOOL",
+          "byte": 0,
+          "bit": 0
+        },
+        "current_speed": {
+          "type": "INT",
+          "offset": 2
+        },
+        "temperature": {
+          "type": "REAL",
+          "offset": 4
+        }
       }
     },
     {
-      "name": "PLC_H150",
-      "ip": "192.168.178.184",
+      "name": "PLC_BACKUP",
+      "ip": "192.168.1.11",
       "rack": 0,
       "slot": 1,
-      "syncDbOffset": 50,
-      "dbNumber": 17,
+      "dbNumber": 2,
       "variables": {
-        "cip_pump_speed_state": { "type": "INT", "offset": 0 },
-        "heartbeat": { "type": "INT", "offset": 2 }
+        "machine_running": {
+          "type": "BOOL",
+          "byte": 0,
+          "bit": 1
+        },
+        "current_speed": {
+          "type": "INT",
+          "offset": 2
+        }
       }
     }
+  ],
+  "mqttConfigs": [
+    {
+      "brokerUrl": "mqtt://broker.example.com",
+      "subscribeTopics": {
+        "plc/updates": {
+          "dataType": "INT",
+          "syncVariable": "current_speed"
+        },
+        "plc/machine": {
+          "dataType": "BOOL",
+          "syncVariable": "machine_running"
+        }
+      },
+      "publishTopic": "plc/data"
+    }
   ]
-}</code></pre>
-
-<h3>Explanation of Configuration</h3>
-<ul>
-    <li><strong>operationInterval</strong>: Interval (in milliseconds) at which data synchronization occurs.</li>
-    <li><strong>maxReconnectAttempts</strong>: Number of attempts to reconnect to a PLC after a connection failure.</li>
-    <li><strong>reconnectInterval</strong>: Interval (in milliseconds) between reconnection attempts.</li>
-    <li><strong>httpPort</strong>: Port number for the HTTP server.</li>
-    <li><strong>apiConfig</strong>: Contains configuration for the HTTP API.
+}
+        </code></pre>
+        <p>
+            In this example:
+        </p>
         <ul>
-            <li><strong>baseUrl</strong>: Base URL of the API.</li>
-            <li><strong>dataEndpoint</strong>: Endpoint for accessing combined PLC data.</li>
-            <li><strong>manualEndpoint</strong>: Endpoint for accessing the manual.</li>
-        </ul>
-    </li>
-    <li><strong>plcs</strong>: Array of PLC configurations.
-        <ul>
-            <li><strong>name</strong>: A unique identifier for the PLC.</li>
-            <li><strong>ip</strong>: IP address of the PLC.</li>
-            <li><strong>rack</strong>: Rack number for the PLC.</li>
-            <li><strong>slot</strong>: Slot number for the PLC.</li>
-            <li><strong>syncDbOffset</strong>: Offset within the synchronization Data Block for this PLC's data.</li>
-            <li><strong>dbNumber</strong>: Data Block number to be read from/written to.</li>
-            <li><strong>variables</strong>: Defines the variables to be read or written.
-                <ul>
-                    <li><strong>type</strong>: Data type of the variable (<code>INT</code>, <code>REAL</code>, <code>BOOL</code>).</li>
-                    <li><strong>offset</strong>: Byte offset of the variable within the Data Block.</li>
-                </ul>
+            <li><strong>httpPort</strong> specifies the HTTPS port the server will use.</li>
+            <li><strong>operationInterval</strong> determines how frequently the server updates PLC data.</li>
+            <li>The <strong>plcs</strong> array defines two PLCs with unique connection settings and variable mappings.
+                For each variable, the <strong>type</strong> indicates its data format (BOOL, INT, or REAL) and the accompanying properties (such as byte, bit, or offset) determine its exact location in the PLC’s Data Block.
+            </li>
+            <li>The <strong>mqttConfigs</strong> array configures an MQTT broker with a URL, topics to subscribe to (each with an expected data type and target sync variable), and a topic to which combined PLC data will be published.
             </li>
         </ul>
-    </li>
-</ul>
 
-<h3>Example Variable Definitions</h3>
-<p>The configuration allows different types of variables to be defined, such as:</p>
-<ul>
-    <li><strong>Integer</strong> (<code>INT</code>):
-        <pre><code>"variable_name": { "type": "INT", "offset": 0 }</code></pre>
-    </li>
-    <li><strong>Boolean</strong> (<code>BOOL</code>):
-        <pre><code>"variable_name": { "type": "BOOL", "byte": 2, "bit": 3 }</code></pre>
-    </li>
-    <li><strong>Real Number</strong> (<code>REAL</code>):
-        <pre><code>"variable_name": { "type": "REAL", "offset": 4 }</code></pre>
-    </li>
-</ul>
+        <footer class="mt-5">
+            <p>
+                For further details, refer to our GitHub documentation, contact ScotsPine, or visit the <a href="/gui">GUI</a> for configuration and monitoring.
+            </p>
+        </footer>
+    </div>
 
-<h2>Data Synchronization and Server Heartbeat</h2>
-<p>The server combines data from all configured PLCs and synchronizes it back. A server heartbeat is included in the data, allowing PLCs to verify the freshness of the data they receive. The offset for this heartbeat is now calculated automatically to ensure it comes after all other variables in the sync data block.</p>
-
-<p>The synchronization mechanism ensures that all PLCs receive updated data, including any commands or status changes requested by other PLCs.</p>
-
-<h2>HTTP API</h2>
-<p>The server provides a simple HTTP API for monitoring purposes:</p>
-<ul>
-    <li><strong>Data Endpoint</strong> (<code>/data</code>): Returns JSON with the following information:
-        <ul>
-            <li><code>serverHeartbeat</code>: Heartbeat value to check if the server is running.</li>
-            <li><code>combinedData</code>: All synchronized data from the PLCs.</li>
-            <li><code>counters</code>: Read and write counters for each PLC.</li>
-            <li><code>manualURL</code>: URL for accessing the manual.</li>
-        </ul>
-    </li>
-    <li><strong>Manual Endpoint</strong> (<code>/manual</code>): Returns the HTML manual.</li>
-</ul>
-
-<p>To access the API, use the following URLs:</p>
-<ul>
-    <li>Data: <code>${baseUrl}:${httpPort}${dataEndpoint}</code></li>
-    <li>Manual: <code>${baseUrl}:${httpPort}${manualEndpoint}</code></li>
-</ul>
-
-<h2>Logging</h2>
-<p>Logs are created daily and rotated automatically. The following types of logs are available:</p>
-<ul>
-    <li><strong>Info Logs</strong>: General information, including successful connections and data synchronization events.</li>
-    <li><strong>Error Logs</strong>: Errors that occur during PLC communication or server operations.</li>
-</ul>
-
-<h2>Adding or Removing PLCs</h2>
-<p>To add or remove a PLC, update the <code>config.json</code> file and restart the server. The program will automatically establish connections to the newly added PLCs and integrate them into the data synchronization process.</p>
-
-<h2>Running in Production</h2>
-<p>For production environments, it's recommended to use PM2 to manage the process. This ensures the server will automatically restart in case of an error or system reboot.</p>
-
-<h2>Security Considerations</h2>
-<p>No security measures are implemented in this program. Ensure that appropriate security measures are taken when deploying in a production environment, such as network isolation or VPNs.</p>
-
-<h2>Troubleshooting</h2>
-<ul>
-    <li><strong>Connection Issues</strong>: If the server cannot connect to a PLC, check the IP address, rack, and slot configuration in <code>config.json</code>. Also, ensure the PLC allows PUT/GET communication.</li>
-    <li><strong>Data Not Syncing</strong>: Verify that the Data Blocks in the PLC have optimized block access disabled.</li>
-    <li><strong>Heartbeat Issues</strong>: Ensure the heartbeat value is being updated correctly by the server and that each PLC is reading the heartbeat to confirm the data is fresh.</li>
-</ul>
-
-<h2>Contact</h2>
-<p>For more information, refer to the online manual or open an issue on the GitHub repository.</p>
-
+    <!-- jQuery (required for Bootstrap 4) -->
+    <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+    <!-- Popper.js (required for Bootstrap 4) -->
+    <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+    <!-- Bootstrap 4 JavaScript -->
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>fetch("/version").then(function(r){return r.json();}).then(function(d){var b=document.querySelector(".navbar-brand");if(b){var s=document.createElement("span");s.className="badge badge-secondary";s.style.cssText="font-size:0.55em;vertical-align:middle;margin-left:8px;";s.textContent="v"+d.version;b.appendChild(s);}}).catch(function(){});</script>
 </body>
 </html>

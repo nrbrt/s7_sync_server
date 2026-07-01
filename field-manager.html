@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PLC Sync Server - Field Manager</title>
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"/>
+  <link rel="icon" type="image/png" href="/favicon-96x96.png" sizes="96x96"/>
+  <style> body { padding-top: 56px; } pre { white-space: pre-wrap; } </style>
+</head>
+<body>
+  <nav class="navbar navbar-expand-lg navbar-light bg-light fixed-top">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#">
+        <img src="/static/ScotsPinelogo-medium.png" alt="ScotsPine Logo" style="height: 40px; margin-right: 10px;"/>
+        PLC Sync Server
+      </a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse"
+              data-target="#navbarNav" aria-controls="navbarNav"
+              aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav mr-auto">
+          <li class="nav-item"><a class="nav-link" href="/gui">Home</a></li>
+          <li class="nav-item"><a class="nav-link" href="/setup">Setup</a></li>
+          <li class="nav-item active"><a class="nav-link" href="/fields"><u>Field Manager</u></a></li>
+          <li class="nav-item"><a class="nav-link" href="/manual">Manual</a></li>
+        </ul>
+        <ul class="navbar-nav ml-auto">
+          <li class="nav-item"><a class="nav-link" href="/logout">Logout</a></li>
+        </ul>
+      </div>
+    </div>
+  </nav>
+  <div class="container">
+    <h3>Add / remove shared field(s)</h3>
+    <p class="text-muted">Generates importable <code>.db</code> source (synthesized from <code>config.json</code>)
+      + the new config. Add can do multiple fields at once on one PLC. Import the <code>.db</code> files into TIA
+      (External source files), then apply config + restart separately, in the order the preview states.</p>
+    <div class="form-row align-items-end mb-2">
+      <div class="form-group col-md-2"><label>Operation</label>
+        <select id="op" class="form-control"><option value="add">add</option><option value="remove">remove</option></select></div>
+      <div class="form-group col-md-3"><label>PLC</label><select id="plc" class="form-control"></select></div>
+    </div>
+    <div id="rows"></div>
+    <button type="button" class="btn btn-outline-secondary btn-sm mb-3" id="addRow">+ veld</button><br>
+    <button type="button" class="btn btn-primary" id="go">Preview / genereer</button>
+    <div id="err" class="alert alert-danger mt-3" style="display:none"></div>
+    <div id="result" style="display:none" class="mt-3">
+      <div id="rollout" class="alert"></div>
+      <button class="btn btn-danger" id="replaceConfig">Replace config.json</button>
+      <button class="btn btn-success" id="dlShare">Download share_this_data.&lt;PLC&gt;.db</button>
+      <button class="btn btn-success" id="dlSynced">Download synced_data.db</button>
+      <div id="applyStatus" class="mt-2"></div>
+      <h5 class="mt-3">Preview</h5><pre id="preview"></pre>
+    </div>
+  </div>
+  <!-- Bootstrap JS (for the collapsible navbar toggler) -->
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.1/dist/umd/popper.min.js"></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+  <script>
+    let last = null;
+    let plcsCfg = [];            // config.plcs, used to populate the remove-field dropdown
+    const $ = (id) => document.getElementById(id);
+    function fieldNamesFor(plcName) {
+      const p = plcsCfg.find(x => x.name === plcName);
+      return p ? Object.keys(p.variables || {}) : [];
+    }
+    function dl(filename, text) {
+      const b = new Blob([text], { type: 'application/octet-stream' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = filename; a.click();
+    }
+    function makeRow() {
+      const div = document.createElement('div');
+      div.className = 'form-row field-row align-items-end mb-1';
+      div.innerHTML =
+        '<div class="form-group col-md-4 mb-1"><input class="form-control fname" placeholder="field_name"/></div>' +
+        '<div class="form-group col-md-2 mb-1 typecol"><select class="form-control ftype"><option>BOOL</option><option>INT</option><option>REAL</option></select></div>' +
+        '<div class="form-group col-md-1 mb-1"><button type="button" class="btn btn-outline-danger rm">&times;</button></div>';
+      div.querySelector('.rm').onclick = () => { if ($('rows').children.length > 1) div.remove(); };
+      return div;
+    }
+    function makeRemoveRow() {  // remove mode: pick an existing field from a dropdown (no typing)
+      const div = document.createElement('div');
+      div.className = 'form-row field-row align-items-end mb-1';
+      const names = fieldNamesFor($('plc').value);
+      const opts = names.length
+        ? names.map(n => '<option>' + n + '</option>').join('')
+        : '<option value="" disabled selected>(no fields on this PLC)</option>';
+      div.innerHTML = '<div class="form-group col-md-5 mb-1"><select class="form-control fname">' + opts + '</select></div>';
+      return div;
+    }
+    function renderRows() {  // rebuild #rows for the current op/PLC
+      const remove = $('op').value === 'remove';
+      $('addRow').style.display = remove ? 'none' : '';
+      $('rows').innerHTML = '';
+      $('rows').appendChild(remove ? makeRemoveRow() : makeRow());
+    }
+    $('addRow').onclick = () => { if ($('op').value !== 'remove') $('rows').appendChild(makeRow()); };
+    $('op').onchange = renderRows;
+    $('plc').onchange = () => { if ($('op').value === 'remove') renderRows(); };  // repopulate field list for the new PLC
+    async function loadPlcs() {
+      const cfg = await (await fetch('/config')).json();
+      plcsCfg = cfg.plcs || [];
+      $('plc').innerHTML = plcsCfg.map(p => '<option>' + p.name + '</option>').join('');
+      renderRows();
+    }
+    $('go').onclick = async () => {
+      $('err').style.display = 'none';
+      const op = $('op').value, plc = $('plc').value;
+      const rows = [...document.querySelectorAll('#rows .field-row')];
+      let body;
+      if (op === 'remove') {
+        body = { op, plc, name: rows[0].querySelector('.fname').value };
+      } else {
+        body = { op, plc, fields: rows.map(r => ({ name: r.querySelector('.fname').value, type: r.querySelector('.ftype').value })) };
+      }
+      const r = await fetch('/fields/preview', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      if (!r.ok) { $('err').textContent = await r.text(); $('err').style.display = 'block'; return; }
+      last = await r.json();
+      $('result').style.display = 'block';
+      const ro = $('rollout'); ro.textContent = last.preview.rollout;
+      ro.className = 'alert ' + (last.preview.hotSafe ? 'alert-success' : 'alert-warning');
+      $('preview').textContent = JSON.stringify(last.preview, null, 2);
+    };
+    $('replaceConfig').onclick = async () => {
+      if (!last) return;
+      if (!confirm('Replace config.json on the server?\n\nThe current file is backed up to config.json.bak.\nThis only takes effect after a server restart.')) return;
+      const st = $('applyStatus');
+      st.className = 'mt-2 text-muted'; st.textContent = 'Replacing…';
+      try {
+        const r = await fetch('/config', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(last.newConfig) });
+        const msg = await r.text();
+        if (r.ok) {
+          st.className = 'mt-2 alert alert-success';
+          st.textContent = '✓ ' + msg + ' Old file saved as config.json.bak. Restart the server (Setup → Restart, or pm2) to apply.';
+        } else {
+          st.className = 'mt-2 alert alert-danger';
+          st.textContent = '✗ ' + msg;
+        }
+      } catch (e) {
+        st.className = 'mt-2 alert alert-danger';
+        st.textContent = '✗ ' + e.message;
+      }
+    };
+    $('dlShare').onclick = () => dl('share_this_data.' + last.preview.plc + '.db', last.shareDb);
+    $('dlSynced').onclick = () => dl('synced_data.db', last.syncedDb);
+    loadPlcs();  // populates the PLC dropdown + renders the initial row(s)
+  </script>
+<script>fetch("/version").then(function(r){return r.json();}).then(function(d){var b=document.querySelector(".navbar-brand");if(b){var s=document.createElement("span");s.className="badge badge-secondary";s.style.cssText="font-size:0.55em;vertical-align:middle;margin-left:8px;";s.textContent="v"+d.version;b.appendChild(s);}}).catch(function(){});</script>
+</body>
+</html>
